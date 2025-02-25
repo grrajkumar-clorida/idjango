@@ -1,0 +1,120 @@
+df.loc[df['SMA_50']
+python3 manage.py shell halfbat/commands/import_result.py
+######################################################################################
+                            Place Order
+def fetch_stock_data(symbol):
+    # Initialize SDK50661165
+    STOCK = "{symbol}"
+
+    try:
+        
+        api = BreezeConnect(api_key="7(#37242uZ313x83183830920d7063Vt")
+        api.generate_session(api_secret="622(60u2XJ01148688u269830A50DG57", session_token="50661165")
+    #breeze_connect.breeze_connect.BreezeConnect object at 0x789e29793620> respons 
+        if(api):
+            STOCK = api.get_names('NSE', 'INVENTURE')['isec_stock_code']
+            order_info = api.place_order(stock_code=STOCK,
+                    exchange_code="NSE",product="cash",action="buy",
+                    order_type="market",stoploss="",quantity="1",price="",validity="day")
+            
+            print('orde:', order_info)
+            if "Status" in order_info and order_info["Status"] == "200":
+                return {
+                    "symbol": symbol,
+                    "last_price": data["data"]["last_price"],
+                    "high": data["data"]["high_price"],
+                    "low": data["data"]["low_price"],
+                    "open": data["data"]["open_price"],
+                    "volume": data["data"]["volume"]
+                }
+        #{'Success': None, 'Status': 500, 'Error': 'Cannot place orders when exchange is in Expiry.:'}
+            elif "Status" in order_info and order_info["Status"] == "500":
+                return {
+                    "symbol": symbol,
+                    ""
+                }
+            else :
+    except Exception as e:
+        print(f"Error fetching data for {symbol}: {e}")
+        return None
+    #Error fetching data for TITAN: Unexpected error: Session key is expired.
+    #STOCK = api.get_names('NSE', STOCK)['isec_stock_code']
+######################################################################################
+                Historical_data_in_dataframe.py
+hdata = api.get_historical_data_v2(interval="1minute",
+                            from_date= "2025-02-18T07:00:00.000Z",
+                            to_date= "2025-02-19T07:00:00.000Z",
+                            stock_code="ICIBAN",
+                            exchange_code="NFO",
+                            product_type="futures",
+                            expiry_date="2025-02-27T07:00:00.000Z",
+                            right="others",
+                            strike_price="0")
+
+df_hdata = pd.DataFrame(hdata['Success'])
+
+print(df_hdata)
+######################################################################################
+                Historical_data
+hata = api.get_historical_data_v2(interval="1day", #"Interval should be either '1second','1minute', '5minute', '30minute', or '1day'"} 
+                            from_date= "2025-02-18T07:00:00.000Z",
+                            to_date= "2025-02-18T15:20:00.000Z",
+                            stock_code="ITC",
+                            exchange_code="NSE",
+                            product_type="cash")
+print(hdata, '----')
+df_hdata = pd.DataFrame(hdata['Success'])
+######################################################################################
+
+symbol = "CNXBAN"
+time_interval = "30minute"
+start_date = datetime(2025, 12, 1, 9, 15,0)
+end_date = datetime(2025, 12, 1, 10, 15,0)
+exchange = "NFO"
+expiry = datetime(2025, 3, 27, 0,0,0)
+
+#!Note how get_names() is used to convert any symbology to any other symbology
+hdata = api.get_names(exchange_code="NSE", stock_code=symbol)
+
+######################################################################################
+symbol = "ACC"
+time_interval = "30minute"
+start_date = datetime(2025, 12, 1, 9, 15,0)
+end_date = datetime(2025, 12, 1, 10, 15,0)
+exchange = "NFO"
+expiry = datetime(2025, 3, 27, 0,0,0)
+
+#!Note how get_names() is used to convert any symbology to any other symbology
+hdata = api.get_names(exchange_code="NSE", stock_code=symbol)
+{'exchange_code': 'NSE', 'exchange_stock_code': 'ACC', 'isec_stock_code': 'ACC', 'isec_token': '22', 'company name': 'ACC LIMITED', 'isec_token_level1': '4.1!22', 'isec_token_level2': '4.2!22'}
+######################################################################################
+symbol = "CNXBAN"
+time_interval = "30minute"
+start_date = datetime(2025, 12, 1, 9, 15,0)
+end_date = datetime(2025, 12, 1, 10, 15,0)
+exchange = "NFO"
+expiry = datetime(2025, 3, 27, 0,0,0)
+
+#!Note how get_names() is used to convert any symbology to any other symbology
+data2 = api.get_historical_data_v2(interval = time_interval,
+                            from_date = start_date,
+                            to_date   = end_date,
+                            stock_code = api.get_names(exchange_code="NSE", stock_code=symbol)['isec_stock_code'],
+                            product_type="futures",
+                            expiry_date=expiry,
+                            exchange_code = exchange)
+
+df2 = pd.DataFrame(data2['Success'])
+######################################################################################
+
+######################################################################################
+######################################################################################
+######################################################################################
+######################################################################################
+######################################################################################
+######################################################################################
+######################################################################################
+######################################################################################
+######################################################################################
+######################################################################################
+######################################################################################
