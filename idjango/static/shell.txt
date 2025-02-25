@@ -1,0 +1,18 @@
+python manage.py shell
+***************************************************************************************
+from stocks.backtesting import BacktestEngine
+from datetime import datetime, timedelta
+
+# Define stock symbol, exchange, and date range
+strategy = "RSI|Moving Average Crossover"
+stock_symbol = "ITC"
+exchange = "NSE"
+start_date = datetime.now() - timedelta(days=365)
+end_date = datetime.now()
+
+# Run the backtest
+engine = BacktestEngine(strategy, stock_symbol, exchange, start_date, end_date)
+result = engine.run()
+
+# Print the backtest results
+print(result)

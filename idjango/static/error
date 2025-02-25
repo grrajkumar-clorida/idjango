@@ -1,0 +1,1 @@
+{'Success': '', 'Status': 500, 'Error': "Interval should be either '1second','1minute', '5minute', '30minute', or '1day'"} 

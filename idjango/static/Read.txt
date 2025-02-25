@@ -1,0 +1,13 @@
+# Python libariry 
+    https://pypi.org/project/breeze-connect/
+#Breeze Login page 
+    https://api.icicidirect.com/apiuser/home
+# ICICIDirect API 
+    https://api.icicidirect.com/breezeapi/documents/index.html#introduction
+# ICICIDirect API DOC
+    https://api.icicidirect.com/apiuser/ICICIDirectAPIDOC.htm
+
+
+
+
+
