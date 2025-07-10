@@ -1,0 +1,29 @@
+Step:1 
+	$ python manage.py runserver
+	Download the CSV file from https://chartink.com/screener/50ma-setup link and past it on media folder.
+Step:2
+	Mon-Friday 3:26PM IST crontab will run data/convert_html_to_csv for (50MA stock from above link) store the data in data_import table.
+	$ python manage.py convert_html_to_csv
+Step:3
+	https://api.icicidirect.com/apiuser/home login and get session id. 
+	Place the session value in settings -> BREEZE_SESSION
+	Calcuate_50MA cron will start 3:30PM IST fetch data_stockpricedata each stock use Breeze api will collect 365days Closing price update in "data_stockpricedata" to calculate 200, 50, 20 etc SMA. stored in data_stocks50ma.
+	$ python manage.py fetch_price_data
+
+Step 4: 
+	
+
+
+Start App
+ python manage.py runserver
+
+Download 50MA csv report form 
+python manage.py convert_html_to_csv
+
+#trandfollowing startage
+#sideways
+#Breakout BOS
+
+Do backtesting - b4 statergy
+
+lsof -i :8000

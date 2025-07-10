@@ -1,0 +1,54 @@
+{% load humanize %}
+<table>
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Stock</th>
+            <th>Name</th>
+            <th>50MA</th>
+            <th>% Change</th>
+            <th>Note</th>
+            <th>Status</th>
+            <th>Trade</th>
+            <th>Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for stock in stocks %}
+        <tr>
+            <td>{{ stock.id }}</td>
+            <td>{{ stock.script }}</td>
+            <td>{{ stock.stock_cmp }}</td>
+            <td>{{ stock.moving_average_50 }}</td>
+            <td>{{ stock.percent_50sma }}%
+                {% if stock.percent_50sma > 10 %}
+                    <span style="color:red;">Over Value</span>
+                {% else %}
+                    <span style="color:green;">Valid</span>
+                {% endif %}</td>
+            <td>{{ stock.range_50ma }}</td>
+            <td>{{ stock.status }}</td>
+            <td><button class="btn btn-sm btn-success" hx-post="{% url 'place_order' %}" hx-vals='{
+                    "stock_code": "{{ stock.stock_code }}",
+                    "exchange": "NSE",
+                    "quantity": "1",
+                    "price": "{{ stock.price }}",
+                    "order_type": "MARKET",
+                    "product": "cash",
+                    "action": "BUY"
+                }'
+                hx-target="#order-msg-{{ stock.id }}"
+                hx-swap="outerHTML">
+                Place Order
+            </button>
+            <div id="order-msg-{{ stock.id }}"></div>
+            </td>
+            <td>{{ stock.created_at|date:"Y-m-d H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="7">No stocks found for given filters.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

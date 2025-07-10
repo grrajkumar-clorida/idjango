@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}
+    📊 50 Smart Moving Average Dashboard
+{% endblock %}
+
+{% block content %}
+    <h2>📈 Smart Moving Average 50 Real-Time Dashboard</h2>
+
+    <form id="sma50-form" hx-get="{% url 'sma50-dashboard' %}" hx-target="#stock-table" hx-swap="innerHTML">
+        <label>Min % Change:
+            <input type="number" name="min_chg" step="0.1" />
+        </label>
+        <label>Max % Change:
+            <input type="number" name="max_chg" step="0.1" />
+        </label>
+        <label>
+            <input type="checkbox" name="today" value="1" /> Today
+        </label>
+        <label>Status:
+        <select name="status">
+            <option value="">-- All --</option>
+            <option value="8">Above 50MA</option>
+            <option value="7">Below 50MA</option>
+            <option value="1">At 50MA</option>
+        </select>
+    </label>
+
+        <button type="submit">Apply Filters</button>
+        <!-- Reset Button -->
+    <a href="/data/" title="Reset">Reset</a>
+    </form>
+
+    <div id="stock-table">
+        {% include "data/_stock_table.html" %}
+    </div>
+{% endblock %}

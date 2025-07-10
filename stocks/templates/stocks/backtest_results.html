@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Stock Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <table>
+        <tr>
+            <th>Strategy</th>
+            <th>Stock</th>
+            <th>Final Balance</th>
+            <th>Total Trades</th>
+            <th>Win Rate (%)</th>
+            <th>Profit Factor</th>
+            <th>Max Drawdown (%)</th>
+        </tr>
+        {% for result in results %}
+        <tr>
+            <td>{{ result.strategy_name }}</td>
+            <td>{{ result.stock_code }}</td>
+            <td>{{ result.final_balance }}</td>
+            <td>{{ result.total_trades }}</td>
+            <td>{{ result.win_rate }}</td>
+            <td>{{ result.profit_factor }}</td>
+            <td>{{ result.max_drawdown }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    
+</body>
+</html>

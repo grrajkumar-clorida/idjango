@@ -1,0 +1,119 @@
+{% load humanize %}
+<table id="stock-table" class="display table table-bordered table-striped table-hover">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Stock Code</th>
+            <!-- <th>Name</th> -->
+            <th>CMP</th>
+            <th colspan="2">SMA</th>
+            <th> 50SMA In %</th>
+            <th colspan="2">Live Data</th>
+            <th>Note</th>
+            <th>Status</th>
+            <th>Trade</th>
+            <th>Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for stock in stocks %}
+        <tr>
+            <td>{{ stock.id }}</td>
+            <td><a href="https://in.tradingview.com/chart/?symbol=NSE%3A{{stock.script}}" name="script" title="{{ stock.name}}" target="_blank">{{ stock.script }}</a> {{stock.stock_code}}</td>
+            <!-- <td>{{ stock.name}}</td> -->
+            <td>
+                <p>Price: {{ stock.stock_cmp }}</p>
+                <p>50MA:  {{ stock.moving_average_50 }}</p>
+            </td>
+            <td colspan="2">
+                <p>Live SMA</p>
+                <p>50: {{ stock.live50ma }}</p>
+                <p>20: {{ stock.live21ma }}</p>
+                <p>09: {{ stock.live09ma }}</p>                
+            </td>
+            <td>
+                <p>50SMA:{{ stock.percent_50sma }}% <p>
+                <p>Crr_50:{{stock.cp50ma}}%</p>
+            </td>
+            <td  colspan="2">
+                <p>CMP: {{ stock.live_price }}</p>
+                <p>chg: {{stock.live_change}}</p>
+                <p>50 >: {{stock.sma50_range}}</p>
+            </td>
+            <td>
+                <!--  Note -->
+                {% if stock.cp50ma %}
+                    {% if stock.cp50ma > 6 %}
+                        <span>CP > 10%</span>
+                    {% else %}
+                        <span style="color:green;">Valid CP 50</span>
+                    {% endif %}
+                {% elif stock.percent_50sma > 6 %}
+                    <span style="color:red;">Over Value</span>
+                {% else %}
+                    <span style="color:green;">Valid</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if stock.status == 0 %}
+                    <b>Invalid</b>
+                {% elif stock.status == 1 %}
+                    <b>Over Value</b>
+                {% elif stock.status == 2 %}
+                    <b>Stoploss</b>
+                {% elif stock.status == 3 %}
+                    <b>Stoploss</b>
+                {% elif stock.status == 4 %}
+                    <b>Stoploss</b>
+                {% elif stock.status == 5 %}
+                    <b>Stoploss</b>
+                {% elif stock.status == 6 %}
+                    <b>New</b>
+                {% elif stock.status == 7 %}
+                    <b>updated 50MA</b>
+                {% elif stock.status == 8 %}
+                    <b>Entry</b>
+                {% elif stock.status == 9 %}
+                    <b>Confirmation</b>
+                {% elif stock.status == 10 %}
+                    <b>Order</b>
+                {% elif stock.status == 11 %}
+                    <b>Target 1</b>
+                {% elif stock.status == 12 %}
+                    <b>Target 2</b>
+                {% elif stock.status == 13 %}
+                    <b>Target 3</b>
+                {% elif stock.status == 14 %}
+                    <b>Above T3</b>
+                {% elif stock.status == 15 %}
+                    <b>Altra</b>
+                {% else %}
+                    <b>Out of Range</b>
+                {% endif %}
+            </td>
+            <td>
+
+                <button class="btn btn-sm btn-success" hx-post="{% url 'place_order' %}" hx-vals='{
+                    "stock_code": "{{ stock.stock_code }}",
+                    "exchange": "NSE",
+                    "quantity": "1",
+                    "price": "{{ stock.price }}",
+                    "order_type": "MARKET",
+                    "product": "cash",
+                    "action": "BUY"
+                }'
+                hx-target="#order-msg-{{ stock.id }}"
+                hx-swap="outerHTML">
+                Buy
+            </button>
+            <div id="order-msg-{{ stock.id }}"></div>
+            </td>
+            <td>{{ stock.created_at|date:"d M y" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="11">No stocks found for given filters.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Home Page
+{% endblock %}
+
+{% block content %}
+    <h1>Welcome to the Web scrp</h1>
+    <p>This is your dashboard content.</p>
+    url = "https://chartink.com/screener/50ma-setup"
+    response = requests.get(url)
+    html = response.text
+    print(html)
+
+{% endblock %}

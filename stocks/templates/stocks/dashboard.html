@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Dashboard - My Site
+{% endblock %}
+
+{% block content %}
+    <h1>Welcome to the Dashboard</h1>
+    <p>This is your dashboard content.</p>
+    <canvas id="stockChart"></canvas>
+    <!-- Profit and Loss List  -->
+    <table id="tradeTable">
+        <thead>
+            <tr>
+                <th>Stock</th>
+                <th>Quantity</th>
+                <th>Type</th>
+                <th>Price</th>
+                <th>Action</th>
+                <th>Stop-Loss</th>
+                <th>Take-Profit</th>
+                <th>Trailing SL</th>
+                <th>P/L</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for trade in trades %}
+            <tr>
+                <td>{{ trade.stock_code }}</td>
+                <td>{{ trade.quantity }}</td>
+                <td>{{ trade.order_type }}</td>
+                <td>{{ trade.price }}</td>
+                <td>{{ trade.action }}</td>
+                <td>{{ trade.stop_loss }}</td>
+                <td>{{ trade.take_profit }}</td>
+                <td>{{ trade.trailing_stop_loss }}</td>
+                <td>{{ trade.profit_loss }}</td>
+                <td>{{ trade.status }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+     <!-- End Profit and loss  -->
+
+<!-- Live Trade details  -->
+    <form id="tradeForm">
+        <input type="text" name="stock" placeholder="Stock Symbol" required>
+        <input type="number" name="quantity" placeholder="Quantity" required>
+        <select name="action">
+            <option value="BUY">BUY</option>
+            <option value="SELL">SELL</option>
+        </select>
+        <select name="order_type" id="order_type">
+            <option value="MARKET">Market</option>
+            <option value="LIMIT">Limit</option>
+        </select>
+        <input type="number" name="price" id="priceInput" placeholder="Limit Price" step="0.01">
+        <button type="submit">Place Trade</button>
+    </form>
+    
+    <table id="tradeTable">
+        <thead>
+            <tr>
+                <th>Stock</th>
+                <th>Quantity</th>
+                <th>Type</th>
+                <th>Price</th>
+                <th>Action</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+    f
+{% endblock %}
+
+
+    
+    <script>
+    document.getElementById("tradeForm").addEventListener("submit", function(event) {
+        event.preventDefault();
+        let formData = new FormData(this);
+    
+        fetch("/place-trade/", {
+            method: "POST",
+            body: formData
+        }).then(response => response.json())
+          .then(data => {
+              if (data.message) {
+                  alert("Trade Executed: " + data.message);
+                  location.reload();
+              } else {
+                  alert("Error: " + data.error);
+              }
+          });
+    });
+    </script>
+<!-- End for live Trade -->
+    <script>
+        var ctx = document.getElementById('stockChart').getContext('2d');
+        var stockChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: {{ dates|safe }},
+                datasets: [{
+                    label: 'ITC Stock Price',
+                    data: {{ prices|safe }},
+                    borderColor: 'blue',
+                    fill: false
+                }]
+            }
+        });
+    </script>
+</body>
+</html>

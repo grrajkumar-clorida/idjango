@@ -1,0 +1,78 @@
+from django.db import models
+
+# Create your models here.
+class Source(models.Model):
+    script = models.CharField(max_length=50, null=True)
+    name = models.CharField(max_length=30, null=True)
+    trade = models.CharField(max_length=10, null=True)
+    market = models.CharField(max_length=10, null=True)
+    price = models.FloatField(null=True)
+    percent = models.FloatField(null=True)
+    notes = models.CharField(max_length=1000, null=True)
+    raw_data = models.TextField(null=True)
+    status = models.CharField(max_length=20, default="Pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.script} - {self.name} - {self.name} ({self.trade})"
+
+class StockPriceData(models.Model):
+    stock_code = models.CharField(max_length=10, db_index=True)  # e.g., TCS, INFY
+    script = models.CharField(max_length=50, null=True)
+    date = models.DateField(db_index=True)  # Trading Date
+    close_price = models.FloatField()  # Closing Price
+    
+    class Meta:
+        unique_together = ('stock_code', 'date')  # No duplicates
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"{self.stock_code} - {self.script} - {self.date} - {self.close_price}"
+
+class Stocks50MA(models.Model):
+    stock_code = models.CharField(max_length=10, db_index=True)  # Ticker Code (e.g., TCS, INFY)
+    script = models.CharField(max_length=50, null=True)
+    date = models.DateField(db_index=True, blank=True, null=True)  # Date of the MA calculation
+    moving_average_50 = models.FloatField()  # 50-Day Moving Average value
+    moving_average_20 = models.FloatField(blank=True, null=True)  # 20-Day Moving Average value
+    stock_cmp = models.FloatField(blank=True,null=True)
+    status = models.IntegerField(default=0)
+    cmp_date = models.DateTimeField(blank=True, null=True)
+    range_50ma = models.FloatField(blank=True,null=True)
+    percent_50sma = models.FloatField(blank=True,null=True)
+    target_1 = models.FloatField(blank=True,null=True)
+    target_2 = models.FloatField(blank=True,null=True)
+    
+    class Meta:
+        unique_together = ('stock_code', 'date')  # Ensure no duplicate records
+        ordering = ['-date']  # Latest records first
+    
+    def __str__(self):
+        return f"{self.stock_code} - {self.script} - {self.date} - 50MA: {self.moving_average_50}"
+
+class Stockhalfbat(models.Model):
+    stock_code = models.CharField(max_length=10, null=True, db_index=True)
+    script = models.CharField(max_length=50, null=True)
+    start_date = models.DateField()
+    start_swing = models.CharField(max_length=5)
+    start_price = models.FloatField()
+    end_date = models.DateField()
+    end_swing = models.CharField(max_length=5)
+    end_price = models.FloatField()
+    entry = models.FloatField()
+    sl = models.FloatField()
+    window = models.IntegerField()
+    period = models.CharField(max_length=10)
+    direction = models.CharField(max_length=10)
+    market = models.CharField(max_length=10)
+    moving_average_50 = models.FloatField(null=True, blank=True)
+    notes = models.CharField(max_length=1000)
+    status = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-created_at']  # Latest records first
+
+    def __str__(self):
+        return f"{self.script} - {self.direction} ({self.period})"

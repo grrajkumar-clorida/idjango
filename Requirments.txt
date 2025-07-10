@@ -1,0 +1,9 @@
+pip install selenium pandas
+
+Requirments 
+
+Data Collection
+	Evening 3:30 PM script should download the 50MA Result data from https://chartink.com/screener/50ma-setup.
+	Chartink has webhook alert need to config # Paid version 
+	
+	fet
