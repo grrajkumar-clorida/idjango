@@ -2,47 +2,50 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.conf import settings
 from django.db.models import Q
-from .models import Source, Stocks50MA
-from .utils import get_50ma_google_sheet_data, filter_stock, update_google_sheet  # 👈 import here
+from .models import Source, Stocks50MA, StockPriceData
+from .utils import get_google_sheet_data, filter_stock, update_google_sheet  # 👈 import here
 from django.forms.models import model_to_dict
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 def sma50_dashboard(request):
-	stocks = Stocks50MA.objects.all()
-	
+	stocks = Stocks50MA.objects.all().filter(status__gt=0).order_by('-created_at', 'id')
+
+	# Create a dictionary mapping script codes to live data
+	live_data_map = {
+		spd.script: spd for spd in StockPriceData.objects.all()
+	}
+
 	# Attach CMP info dynamically to each stock object
 	for stock in stocks:
 		script = stock.script.upper()
-		#google_fin = filter_stock(sheet_data, script)
+		live = live_data_map.get(stock.script)
+		if live:
+			stock.live_price = live.close_price
+			stock.live_change = round(live.close_price - stock.stock_cmp, 2)
+			stock.sma50_range = round(live.close_price - stock.moving_average_50, 2)
+			stock.live50ma = live.live50ma
+			stock.cp50ma = live.cp50ma
+			stock.live21ma = live.live21ma
+			stock.live09ma = live.live9ma
 
-		# 	stock.cmp = google_fin.get('Cmp', "-")
-		# 	stock.sma50 = google_fin.get('50MA', "-")
-		# 	stock.range50 = google_fin.get('Range50', "-")
-		# 	stock.persent = google_fin.get('Persentage	', "-")
-		# 	stock.t1 = google_fin.get('T1', "-")
-		# 	stock.t2 = google_fin.get('T2', "-")
-		# 	stock.t3 = google_fin.get('T3', "-")
-		# 	stock.t4 = google_fin.get('T4', "-")
-		# print(type(stock))
-
-
-	#print(data_dict)
 	min_chg = request.GET.get("min_chg")
 	max_chg = request.GET.get("max_chg")
+	status = request.GET.get('status')
 	today_only = request.GET.get("today") == "1"
 	if min_chg:
-		stocks = stocks.filter(chg_percent__gte=float(min_chg))
+		stocks = stocks.filter(percent_50sma__gte=float(min_chg))
 	if max_chg:
-		stocks = stocks.filter(chg_percent__lte=float(max_chg))
+		stocks = stocks.filter(percent_50sma__lte=float(max_chg))
 	if today_only:
 		today = timezone.now().date()
 		stocks = stocks.filter(created_at__date=today)
-
+	if status:
+		stocks = stocks.filter(status=status)
 	if request.htmx:
-		return render(request, "_stock_table.html", {"stocks": stocks})
-	
-	return render(request, "dashboard_htmx.html", {
+		return render(request, "data/_stock_table.html", {"stocks": stocks})
+		
+	return render(request, "data/dashboard_htmx.html", {
         "stocks": stocks,
     })
     #return render(request, "dashboard_htmx.html", {"stocks": stocks})
@@ -50,13 +53,6 @@ def sma50_dashboard(request):
 
 def chartink_dashboard(request):
 	stocks = Source.objects.all()
-	
-	# Attach CMP info dynamically to each stock object
-	# for stock in stocks:
-	# 	symbol = stock.symbol.upper()
-	# 	stock.cmp = cmp_data.get(symbol, {}).get("cmp", "-")
-	# 	stock.cmp_date = cmp_data.get(symbol, {}).get("date", "-")
-
 
 	min_chg = request.GET.get("min_chg")
 	max_chg = request.GET.get("max_chg")
@@ -70,9 +66,9 @@ def chartink_dashboard(request):
 		stocks = stocks.filter(created_at__date=today)
 
 	if request.htmx:
-		return render(request, "_stock_table.html", {"stocks": stocks})
+		return render(request, "data/_stock_table.html", {"stocks": stocks})
 
-	return render(request, "source_htmx.html", {
+	return render(request, "data/source_htmx.html", {
         "stocks": stocks,
     })
     #return render(request, "dashboard_htmx.html", {"stocks": stocks})

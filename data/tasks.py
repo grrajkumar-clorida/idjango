@@ -28,7 +28,7 @@ def calculate_50ma(tf=50):
             stock_code = symbol,
             script = latest_ma['script'],
             date = latest_ma['date'],
-            defaults = {'moving_average_50': round(latest_ma['50MA'], 2), 'moving_average_20': round(latest_ma['20MA'], 2)}
+            defaults = {'moving_average_50': round(latest_ma['50MA'], 2), 'moving_average_20': round(latest_ma['20MA'], 2), 'status': 0, }
         )
 
     return "50MA Calculation Done"

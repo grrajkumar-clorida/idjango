@@ -106,7 +106,22 @@ data2 = api.get_historical_data_v2(interval = time_interval,
 
 df2 = pd.DataFrame(data2['Success'])
 ######################################################################################
+File paths 
+# media_path = settings.MEDIA_ROOT  # Ensure MEDIA_ROOT is correctly set
+        # files = os.listdir(media_path)
 
+        # print("Files in Media Directory:", files)
+        file_path = os.path.join(settings.MEDIA_ROOT, "result_1.html")  # ✅ Correct file system path
+        print(f"Checking file path: {file_path}")
+
+        # Verify file existence before reading
+        if os.path.exists(file_path):
+            with open(file_path, "r", encoding="utf-8") as file:
+                html_content = file.read()
+                print("File successfully read.")
+        else:
+            print("Error: File not found.")
+            
 ######################################################################################
 ######################################################################################
 ######################################################################################
