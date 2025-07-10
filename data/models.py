@@ -21,6 +21,10 @@ class StockPriceData(models.Model):
     script = models.CharField(max_length=50, null=True)
     date = models.DateField(db_index=True)  # Trading Date
     close_price = models.FloatField()  # Closing Price
+    live50ma = models.FloatField(blank=True, null=True)
+    cp50ma = models.FloatField(blank=True, null=True)
+    live21ma = models.FloatField(blank=True, null=True)
+    live9ma = models.FloatField(blank=True, null=True)
     
     class Meta:
         unique_together = ('stock_code', 'date')  # No duplicates
@@ -40,15 +44,20 @@ class Stocks50MA(models.Model):
     cmp_date = models.DateTimeField(blank=True, null=True)
     range_50ma = models.FloatField(blank=True,null=True)
     percent_50sma = models.FloatField(blank=True,null=True)
+    name = models.CharField(max_length=200, null=True)
     target_1 = models.FloatField(blank=True,null=True)
     target_2 = models.FloatField(blank=True,null=True)
-    
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
+    # ✅ New field to store snapshot
+    pre_data = models.JSONField(null=True, blank=True)
+
     class Meta:
         unique_together = ('stock_code', 'date')  # Ensure no duplicate records
         ordering = ['-date']  # Latest records first
     
     def __str__(self):
-        return f"{self.stock_code} - {self.script} - {self.date} - 50MA: {self.moving_average_50}"
+        return f" {self.script} - CMP:{self.stock_cmp} - 50MA:{self.moving_average_50} - Status {self.status}"
 
 class Stockhalfbat(models.Model):
     stock_code = models.CharField(max_length=10, null=True, db_index=True)
@@ -76,3 +85,4 @@ class Stockhalfbat(models.Model):
 
     def __str__(self):
         return f"{self.script} - {self.direction} ({self.period})"
+

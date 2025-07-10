@@ -3,7 +3,24 @@ import requests
 "secrets/your_google_credentials.json"
 from oauth2client.service_account import ServiceAccountCredentials
 from django.conf import settings
+from django.core.mail import send_mail
 from .models import Stocks50MA
+from django.conf import settings
+from datetime import datetime
+
+def send_telegram_message(message):
+    """Send a message to the Telegram bot."""
+    url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": settings.TELEGRAM_CHAT_ID,
+        "text": message
+    }
+    try:
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to send Telegram message: {e}")
+
 def get_cmp_data_from_google_sheet():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name(
@@ -26,42 +43,29 @@ def get_cmp_data_from_google_sheet():
     return cmp_data
 
 
-def update_google_sheet(stock_list, new_data=''):
+def update_google_sheet(sheet, stock_list, new_data=''):
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     
     creds = ServiceAccountCredentials.from_json_keyfile_name("secrets/idjango-888-4e0163c2f1b5.json", scope)
     client = gspread.authorize(creds)
 
     spreadsheet = client.open("idjango")
-    sheet = spreadsheet.worksheet("googleFinace")  # Or use .get_worksheet(0)
+    sheet = spreadsheet.worksheet(sheet)  # Or use .get_worksheet(0)
 
-    # Find row by stock_code in "Stock" column
-    # stock_col = sheet.row_values(1).index("Stock") + 1  # +1 for 1-based index
-    # print(stock_col, '0000')
-    # all_stocks = sheet.col_values(stock_col)
-    sheet.batch_clear(["B2:B"])
+    sheet.batch_clear(["C2:C"])
     values = [[stock] for stock in stock_list]
 
     start_row = 2
     end_row = start_row + len(stock_list) - 1
-    range_string = f"B{start_row}:B{end_row}"
+    range_string = f"C{start_row}:C{end_row}"
     
     # Update the range with new data; using RAW value input mode.
     sheet.update(range_string, values, value_input_option="RAW")
 
     return("✅ Stock column updated successfully!")
 
-    # for idx, stock in enumerate(all_stocks):
-    #     if stock == stock_code:
-    #         row_num = idx + 1  # gspread is 1-indexed
-    #         sheet.update(f"C{row_num}", new_data)  # For example: column C
-    #         return f"Updated row {row_num} for {stock_code}"
-
-    return "Stock code not found"
-
-
 #
-def get_50ma_google_sheet_data(spreadsheet_id, sheet_name, api_key):
+def get_google_sheet_data(spreadsheet_id, sheet_name, api_key):
 
     # Construct the URL for the Google Sheets API
     url = f'https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{sheet_name}!A1:Z?alt=json&key={api_key}'
@@ -79,7 +83,14 @@ def get_50ma_google_sheet_data(spreadsheet_id, sheet_name, api_key):
     except requests.exceptions.RequestException as e:
         # Handle any errors that occur during the request
         print(f"An error occurred: {e}")
+
         return None
+
+def safe_float(val):
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return 0.00
 
 def moving_average(sheet_data):
     rows = sheet_data.get("values", [])
@@ -105,7 +116,6 @@ def moving_average(sheet_data):
         return None  # If column names not found
 
     # Find matching row
-    print(data_rows)
     sma_50 = []
     for row in data_rows:
         print(row[stock_col])
@@ -184,6 +194,7 @@ def place_order(request):
             action=action
         )
 
+        print('utility:', response)
         return JsonResponse({
             "status": "success",
             "message": f"Order placed: {response}"
@@ -191,36 +202,46 @@ def place_order(request):
 
     return JsonResponse({"status": "error", "message": "Invalid request"})
 
-    def place_orders(data):
-        payload = json.dumps({
-            "stock_code": data['code'],
-            "exchange_code": "NSE",
-            "product": "cash",
-            "action": "buy",
-            "order_type": "market",
-            "quantity": "1",
-            "price": "263.15",
-            "validity": "ioc"
-        })
+# def place_orders(data):
+#     payload = json.dumps({
+#         "stock_code": data['code'],
+#         "exchange_code": "NSE",
+#         "product": "cash",
+#         "action": "buy",
+#         "order_type": "market",
+#         "quantity": "1",
+#         "price": "263.15",
+#         "validity": "ioc"
+#     })
 
-        stock = request.POST["stock"]
-        quantity = int(request.POST["quantity"])
-        action = request.POST["action"]  # BUY or SELL
-        order_type = request.POST["order_type"]  # MARKET or LIMIT
-        price = float(request.POST["price"]) if order_type == "LIMIT" else 0
+#     stock = request.POST["stock"]
+#     quantity = int(request.POST["quantity"])
+#     action = request.POST["action"]  # BUY or SELL
+#     order_type = request.POST["order_type"]  # MARKET or LIMIT
+#     price = float(request.POST["price"]) if order_type == "LIMIT" else 0
 
-        response = breeze.place_order(stock, "NSE", quantity, order_type, price, "cash", action)
+#     response = breeze.place_order(stock, "NSE", quantity, order_type, price, "cash", action)
 
-        if response["Status"] == "Success":
-            trade = LiveTrade.objects.create(
-                stock_code=stock,
-                quantity=quantity,
-                order_type=order_type,
-                price=price,
-                action=action,
-                status="Executed",
-                order_id=response["order_id"]
-            )
-            return JsonResponse({"message": "Trade Executed", "order_id": response["order_id"]})
-        else:
-            return JsonResponse({"error": response["ErrorMessage"]})
+#     if response["Status"] == "Success":
+#         trade = LiveTrade.objects.create(
+#             stock_code=stock,
+#             quantity=quantity,
+#             order_type=order_type,
+#             price=price,
+#             action=action,
+#             status="Executed",
+#             order_id=response["order_id"]
+#         )
+#         return JsonResponse({"message": "Trade Executed", "order_id": response["order_id"]})
+#     else:
+#         return JsonResponse({"error": response["ErrorMessage"]})
+
+def date_format(date):
+    cmp_date_str = date.strip()
+    try:
+        cmp_date = datetime.strptime(cmp_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        cmp_date = None  # fallback
+
+    # Return
+    date

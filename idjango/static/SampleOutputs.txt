@@ -1,0 +1,15 @@
+Sample Outputs 
+
+# Isecure Stock Code
+get_isec_stock_code(DEVYANI)
+	{'exchange_code': 'NSE', 'exchange_stock_code': 'DEVYANI', 'isec_stock_code': 'DEVIN', 'isec_token': '5373', 'company name': 'DEVYANI INTERNATIONAL LIMITED', 'isec_token_level1': '4.1!5373', 'isec_token_level2': '4.2!5373'}
+
+#Historical Data for 365 Days
+get_historical_data
+	{"Success": [{"datetime": "2024-02-28 12:02:00", "stock_code": "DEVIN", "exchange_code": "NSE", "product_type": None, "expiry_date": None, "right": None, "strike_price": None, "open": "157.3", "high": "159.25", "low": "153.25", "close": "154.35", "volume": "3398707", "open_interest": None, "count": 0}, {"datetime": "2024-02-29 12:02:00", "stock_code": "DEVIN", "exchange_code": "NSE", "product_type": None, "expiry_date": None, "right": None, "strike_price": None, "open": "153.95", "high": "154.95", "low": "150.9", "close": "153.6", "volume": "2922792", "open_interest": None, "count": 1}, {"datetime": "2024-03-01 12:03:00", "stock_code": "DEVIN", "exchange_code": "NSE", "product_type": None, "expiry_date": None, "right": None, "strike_price": None, "open": "155.8", "high": "156", "low": "153.8", "close": "154.4", "volume": "2561687", "open_interest": None, "count": 2}, {"datetime": "2025-02-25 12:02:00", "stock_code": "DEVIN", "exchange_code": "NSE", "product_type": None, "expiry_date": None, "right": None, "strike_price": None, "open": "173.25", "high": "179.5", "low": "172.01", "close": "178.46", "volume": "2785747", "open_interest": None, "count": 248}], "Status": 200, "Error": None}
+
+#get_quotes
+	{'Success': [{'exchange_code': 'NSE', 'product_type': '', 'stock_code': 'ITC', 'expiry_date': None, 'right': None, 'strike_price': 0.0, 'ltp': 395.0, 'ltt': '28-Feb-2025 15:59:55', 'best_bid_price': 395.0, 'best_bid_quantity': '5114', 'best_offer_price': 0.0, 'best_offer_quantity': '0', 'open': 399.0, 'high': 402.5, 'low': 392.2, 'previous_close': 401.6, 'ltp_percent_change': 1.64342629482072, 'upper_circuit': 434.5, 'lower_circuit': 355.5, 'total_quantity_traded': '31954776', 'spot_price': None}, {'exchange_code': 'BSE', 'product_type': '', 'stock_code': 'ITC', 'expiry_date': None, 'right': None, 'strike_price': 0.0, 'ltp': 394.7, 'ltt': '28-Feb-2025 15:31:11', 'best_bid_price': 395.45, 'best_bid_quantity': '32', 'best_offer_price': 396.1, 'best_offer_quantity': '10', 'open': 399.8, 'high': 402.4, 'low': 392.35, 'previous_close': 401.45, 'ltp_percent_change': 1.68140490721136, 'upper_circuit': 434.15, 'lower_circuit': 355.25, 'total_quantity_traded': '267886', 'spot_price': None}], 'Status': 200, 'Error': None}
+
+
+

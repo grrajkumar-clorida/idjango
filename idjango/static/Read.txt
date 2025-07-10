@@ -8,6 +8,18 @@
     https://api.icicidirect.com/apiuser/ICICIDirectAPIDOC.htm
 
 
+Data app 
+    python manage.py convert_html_to_csv
+crontab -e
+crontab -l
+30 10 * * 1-5 /path/to/your/venv/bin/python /path/to/manage.py convert_html_to_csv
+
+shell
+python manage.py convert_html_to_csv
+
+python manage.py fetch_stock_prices
+
+
 
 
 
