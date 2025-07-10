@@ -1,0 +1,27 @@
+Sample Outputs 
+
+AIzaSyAcR74ULgxNe3kaocLhsJaFVemzw3Ky2oM -sheet
+id = 14CUwh-XvNjtRRxK6aHVjIbWvdDDO6dbfWd5n53B4EE4
+https://docs.google.com/spreadsheets/d/14CUwh-XvNjtRRxK6aHVjIbWvdDDO6dbfWd5n53B4EE4/edit?usp=sharing
+
+
+https://sheets.googleapis.com/v4/spreadsheets/14CUwh-XvNjtRRxK6aHVjIbWvdDDO6dbfWd5n53B4EE4/values/idjango!A1:Z?alt=json&key=AIzaSyAcR74ULgxNe3kaocLhsJaFVemzw3Ky2oM
+
+# Isecure Stock Code
+get_isec_stock_code(DEVYANI)
+	{'exchange_code': 'NSE', 'exchange_stock_code': 'DEVYANI', 'isec_stock_code': 'DEVIN', 'isec_token': '5373', 'company name': 'DEVYANI INTERNATIONAL LIMITED', 'isec_token_level1': '4.1!5373', 'isec_token_level2': '4.2!5373'}
+
+#Historical Data for 365 Days
+get_historical_data
+	{"Success": [{"datetime": "2024-02-28 12:02:00", "stock_code": "DEVIN", "exchange_code": "NSE", "product_type": None, "expiry_date": None, "right": None, "strike_price": None, "open": "157.3", "high": "159.25", "low": "153.25", "close": "154.35", "volume": "3398707", "open_interest": None, "count": 0}, {"datetime": "2024-02-29 12:02:00", "stock_code": "DEVIN", "exchange_code": "NSE", "product_type": None, "expiry_date": None, "right": None, "strike_price": None, "open": "153.95", "high": "154.95", "low": "150.9", "close": "153.6", "volume": "2922792", "open_interest": None, "count": 1}, {"datetime": "2024-03-01 12:03:00", "stock_code": "DEVIN", "exchange_code": "NSE", "product_type": None, "expiry_date": None, "right": None, "strike_price": None, "open": "155.8", "high": "156", "low": "153.8", "close": "154.4", "volume": "2561687", "open_interest": None, "count": 2}, {"datetime": "2025-02-25 12:02:00", "stock_code": "DEVIN", "exchange_code": "NSE", "product_type": None, "expiry_date": None, "right": None, "strike_price": None, "open": "173.25", "high": "179.5", "low": "172.01", "close": "178.46", "volume": "2785747", "open_interest": None, "count": 248}], "Status": 200, "Error": None}
+
+#get_quotes
+	response = {"Success": [{"datetime": "2024-02-28 12:02:00", "stock_code": "DEVIN", "exchange_code": "NSE", "product_type": None, "expiry_date": None, "right": None, "strike_price": None, "open": "157.3", "high": "159.25", "low": "153.25", "close": "154.35", "volume": "3398707", "open_interest": None, "count": 0}, {"datetime": "2024-02-29 12:02:00", "stock_code": "DEVIN", "exchange_code": "NSE", "product_type": None, "expiry_date": None, "right": None, "strike_price": None, "open": "153.95", "high": "154.95", "low": "150.9", "close": "153.6", "volume": "2922792", "open_interest": None, "count": 1}, {"datetime": "2024-03-01 12:03:00", "stock_code": "DEVIN", "exchange_code": "NSE", "product_type": None, "expiry_date": None, "right": None, "strike_price": None, "open": "155.8", "high": "156", "low": "153.8", "close": "154.4", "volume": "2561687", "open_interest": None, "count": 2}, {"datetime": "2025-02-25 12:02:00", "stock_code": "DEVIN", "exchange_code": "NSE", "product_type": None, "expiry_date": None, "right": None, "strike_price": None, "open": "173.25", "high": "179.5", "low": "172.01", "close": "178.46", "volume": "2785747", "open_interest": None, "count": 248}], "Status": 200, "Error": None}
+
+
+	#nse_data = [entry for entry in response if entry.get("exchange_code") == "NSE"]
+	latest_data= next((entry for entry in reversed(data) if entry.get("exchange_code") == "NSE"), None)
+	latest_data.get('ltp', 'N/A')
+
+#get_live_price('RAIIND')
+[{'exchange_code': 'NSE', 'product_type': '', 'stock_code': 'RAIIND', 'expiry_date': None, 'right': None, 'strike_price': 0.0, 'ltp': 138.62, 'ltt': '04-Apr-2025 15:55:12', 'best_bid_price': 0.0, 'best_bid_quantity': '0', 'best_offer_price': 138.62, 'best_offer_quantity': '232', 'open': 142.01, 'high': 142.61, 'low': 137.25, 'previous_close': 143.09, 'ltp_percent_change': 3.12390802991124, 'upper_circuit': 166.34, 'lower_circuit': 110.89, 'total_quantity_traded': '796197', 'spot_price': None}, {'exchange_code': 'BSE', 'product_type': '', 'stock_code': 'RAIIND', 'expiry_date': None, 'right': None, 'strike_price': 0.0, 'ltp': 138.8, 'ltt': '04-Apr-2025 16:01:34', 'best_bid_price': 0.0, 'best_bid_quantity': '0', 'best_offer_price': 0.0, 'best_offer_quantity': '0', 'open': 142.05, 'high': 142.05, 'low': 137.5, 'previous_close': 143.0, 'ltp_percent_change': 2.93706293706294, 'upper_circuit': 166.55, 'lower_circuit': 111.05, 'total_quantity_traded': '20584', 'spot_price': None}]

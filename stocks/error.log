@@ -1,0 +1,89 @@
+
+INFO:root:Breeze API session established successfully :).
+API Status:  True
+Breeze active!
+icode:  RAIIND - RAIN - 2025-01-23 - 50MA: 135.18
+[{'exchange_code': 'NSE', 'product_type': '', 'stock_code': 'RAIIND', 'expiry_date': None, 'right': None, 'strike_price': 0.0, 'ltp': 135.85, 'ltt': '08-Apr-2025 15:13:53', 'best_bid_price': 135.85, 'best_bid_quantity': '13', 'best_offer_price': 135.94, 'best_offer_quantity': '8', 'open': 136.29, 'high': 137.62, 'low': 133.53, 'previous_close': 133.47, 'ltp_percent_change': 1.78317224844534, 'upper_circuit': 160.16, 'lower_circuit': 106.77, 'total_quantity_traded': '405047', 'spot_price': None}, {'exchange_code': 'BSE', 'product_type': '', 'stock_code': 'RAIIND', 'expiry_date': None, 'right': None, 'strike_price': 0.0, 'ltp': 136.0, 'ltt': '08-Apr-2025 15:13:57', 'best_bid_price': 135.7, 'best_bid_quantity': '5600', 'best_offer_price': 136.0, 'best_offer_quantity': '97', 'open': 138.8, 'high': 138.8, 'low': 133.5, 'previous_close': 133.5, 'ltp_percent_change': 1.87265917602996, 'upper_circuit': 160.2, 'lower_circuit': 106.8, 'total_quantity_traded': '23887', 'spot_price': None}]
+icode:  KALJEW - KALYANKJIL - 2025-01-23 - 50MA: 477.29
+[{'exchange_code': 'NSE', 'product_type': '', 'stock_code': 'KALJEW', 'expiry_date': None, 'right': None, 'strike_price': 0.0, 'ltp': 492.2, 'ltt': '08-Apr-2025 15:13:59', 'best_bid_price': 492.2, 'best_bid_quantity': '51', 'best_offer_price': 492.35, 'best_offer_quantity': '7', 'open': 500.0, 'high': 505.0, 'low': 483.6, 'previous_close': 486.3, 'ltp_percent_change': 1.21324285420522, 'upper_circuit': 534.9, 'lower_circuit': 437.7, 'total_quantity_traded': '7083761', 'spot_price': None}, {'exchange_code': 'BSE', 'product_type': '', 'stock_code': 'KALJEW', 'expiry_date': None, 'right': None, 'strike_price': 0.0, 'ltp': 492.15, 'ltt': '08-Apr-2025 15:13:59', 'best_bid_price': 492.05, 'best_bid_quantity': '104', 'best_offer_price': 492.5, 'best_offer_quantity': '66', 'open': 499.0, 'high': 505.3, 'low': 483.4, 'previous_close': 486.4, 'ltp_percent_change': 1.18215460526316, 'upper_circuit': 535.0, 'lower_circuit': 437.8, 'total_quantity_traded': '845910', 'spot_price': None}]
+icode:  KARBAN - KTKBANK - 2025-01-23 - 50MA: 177.83
+Traceback (most recent call last):
+  File "/anaconda3/envs/idjango/lib/python3.13/site-packages/requests/models.py", line 974, in json
+    return complexjson.loads(self.text, **kwargs)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/anaconda3/envs/idjango/lib/python3.13/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/anaconda3/envs/idjango/lib/python3.13/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/anaconda3/envs/idjango/lib/python3.13/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/anaconda3/envs/idjango/lib/python3.13/site-packages/breeze_connect/breeze_connect.py", line 1848, in get_quotes
+    response = response.json()
+  File "/anaconda3/envs/idjango/lib/python3.13/site-packages/requests/models.py", line 978, in json
+    raise RequestsJSONDecodeError(e.msg, e.doc, e.pos)
+requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/anaconda3/envs/idjango/lib/python3.13/site-packages/breeze_connect/breeze_connect.py", line 1020, in get_quotes
+    return self.api_handler.get_quotes(stock_code, exchange_code, expiry_date, product_type, right, strike_price)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/anaconda3/envs/idjango/lib/python3.13/site-packages/breeze_connect/breeze_connect.py", line 1851, in get_quotes
+    self.error_exception(self.get_quotes.__name__,e)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/anaconda3/envs/idjango/lib/python3.13/site-packages/breeze_connect/breeze_connect.py", line 1090, in error_exception
+    raise Exception(message).with_traceback(error.__traceback__)
+  File "/anaconda3/envs/idjango/lib/python3.13/site-packages/breeze_connect/breeze_connect.py", line 1848, in get_quotes
+    response = response.json()
+  File "/anaconda3/envs/idjango/lib/python3.13/site-packages/requests/models.py", line 978, in json
+    raise RequestsJSONDecodeError(e.msg, e.doc, e.pos)
+Exception: get_quotes() Error
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/manage.py", line 22, in <module>
+    main()
+    ~~~~^^
+  File "/manage.py", line 18, in main
+    execute_from_command_line(sys.argv)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/anaconda3/envs/idjango/lib/python3.13/site-packages/django/core/management/__init__.py", line 442, in execute_from_command_line
+    utility.execute()
+    ~~~~~~~~~~~~~~~^^
+  File "/anaconda3/envs/idjango/lib/python3.13/site-packages/django/core/management/__init__.py", line 436, in execute
+    self.fetch_command(subcommand).run_from_argv(self.argv)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/anaconda3/envs/idjango/lib/python3.13/site-packages/django/core/management/__init__.py", line 275, in fetch_command
+    klass = load_command_class(app_name, subcommand)
+  File "/anaconda3/envs/idjango/lib/python3.13/site-packages/django/core/management/__init__.py", line 48, in load_command_class
+    module = import_module("%s.management.commands.%s" % (app_name, name))
+  File "/anaconda3/envs/idjango/lib/python3.13/importlib/__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1026, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/data/management/commands/fetch_50ma.py", line 9, in <module>
+    class Command(BaseCommand):
+    ...<21 lines>...
+        		print(result.get("Success"))
+  File "fetch_price.py", line 29, in Command
+    result = breeze.get_live_price(icode.stock_code, "NSE")
+  File "breeze_client.py", line 63, in get_live_price
+    response = self.api.get_quotes(stock_code=stock_code, exchange_code=exchange)
+  File "/anaconda3/envs/idjango/lib/python3.13/site-packages/breeze_connect/breeze_connect.py", line 1022, in get_quotes
+    self.error_exception(self.get_quotes.__name__,e)
+    ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'BreezeConnect' object has no attribute 'error_exception'

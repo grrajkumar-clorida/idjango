@@ -1,0 +1,52 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backtest Results Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Load Chart.js -->
+</head>
+<body>
+    <h2>Backtest Results</h2>
+    <canvas id="backtestChart"></canvas>
+
+    <script>
+        var ctx = document.getElementById('backtestChart').getContext('2d');
+        var data = {{ data|safe }};  // Pass data from Django
+
+        new Chart(ctx, {
+            type: 'line', 
+            data: {
+                labels: data.dates,
+                datasets: [
+                    {
+                        label: 'Profit Factor',
+                        data: data.profit_factor,
+                        borderColor: 'green',
+                        fill: false
+                    },
+                    {
+                        label: 'Max Drawdown',
+                        data: data.max_drawdown,
+                        borderColor: 'red',
+                        fill: false
+                    },
+                    {
+                        label: 'Total Trades',
+                        data: data.total_trades,
+                        borderColor: 'blue',
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
