@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Home Page
+{% endblock %}
+
+{% block content %}
+    <h1>Algo Trading Stocks Positions</h1>
+    {% if stock_positions %}
+    <p>You have no open positions today!</p>
+    {% else %}
+    <table id="stock-table" class="display table table-bordered table-striped table-hover">
+    <thead>
+        <tr>
+            <th>Order ID:</th>
+            <th>Stock Code</th>
+            <!-- <th>Name</th> -->
+            <th>CMP</th>
+            <th>Invested Val</th>
+            <th> 50SMA In %</th>
+            <th>Live Data</th>
+            <th>Stoploss</th>
+            <th>Targets</th>
+            <th>Status</th>
+            <th>Action</th>
+            <th>Date</th>
+        </tr>
+    </thead>
+    <tbody>
+    	{% for position in positions %}
+    	<tr>
+    		<td>{{ position.order_id }}</td>
+    		<td><p>{{ position.ticker }}</p>  {{ position.script }} </td>
+    		<td>{{ position.qty }} X {{ position.price }}</td>
+    		<td>{{ position.invested_value }}</td>
+    		<td>{{ position.day_pl }} : {{ position.overall_pl }}</td>
+    		<td>{{ position.position }}</td>
+    		<td>{{ position.stop_loss }}</td>
+    		<td>{{ position.targets }}</td>
+    		<td>{{ position.status }}</td>
+    		<td><button>Sell</button></td>
+    		<td>{{ position.created_at }}</td>
+    	</tr>
+    	{% endfor %}
+    </tbody>
+	</table>
+    {% endif %}
+{% endblock %}

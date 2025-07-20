@@ -92,3 +92,22 @@ class MovingAverage(models.Model):
     updated_at = models.DateTimeField(auto_now_add=True)
 
 
+class Orders(models.Model):
+    ticker = models.CharField(max_length=15)
+    script = models.CharField(max_length=15)
+    order_id = models.CharField(max_length=30)
+    position = models.CharField(max_length=26)
+    stop_loss = models.FloatField(max_length=6)
+    qty = models.CharField(max_length=15)
+    price = models.FloatField()
+    invested_value = models.FloatField()
+    current_value = models.FloatField()
+    day_pl = models.FloatField()
+    overall_pl = models.FloatField()
+    targets = models.JSONField(null=True, blank=True)
+    status = models.IntegerField(default=0)
+    message = models.CharField(max_length=266)
+    user_remark = models.CharField(max_length=15)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now_add=True)
+

@@ -1,13 +1,9 @@
 from django.shortcuts import render, redirect
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth import authenticate, login
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
-from django.contrib.auth import logout
 from datetime import datetime, timedelta
-from .models import Stock, StockData, LiveTrade, BacktestResult
+from .models import Stock, StockData, LiveTrade, BacktestResult, Orders
 from django.http import JsonResponse
-from stocks.breeze_client import BreezeAPI
+from infra.utils.breeze_client import BreezeAPI
 from django.core.mail import send_mail
 from django.conf import settings
 #import
@@ -23,25 +19,10 @@ def home(request):
     # #employees = User.objects.all()
     return render(request, 'home.html')
 
-def user_login(request):
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            login(request, user)
-            return redirect('home')  # Redirect to the home page after successful login
-        else:
-            messages.error(request, 'Invalid username or password.')
-    return render(request, 'login.html')
+def open_positions(request):
+    positions = Orders.objects.all() #filter(status=1)
 
-
-def user_logout(request):
-    logout(request)
-    return redirect('login')
-
-def about_us(request):
-	return render(request, 'about_us.html')
+    return render(request, 'stocks/open_positions.html', {"positions":positions})
 
 def stock_dashboard(request):
     stocks = StockData.objects.filter(symbol="ITC").order_by("date")

@@ -1,23 +1,24 @@
 import datetime
 import time
 import requests
-from django.core.management.base import BaseCommand
-from stocks.breeze_client import BreezeAPI
-from data.models import Stocks50MA, StockPriceData, Source
-from datetime import datetime, timedelta
-from data.tasks import calculate_50ma
-from django.conf import settings
-from oauth2client.service_account import ServiceAccountCredentials
+from decouple import config
 from datetime import datetime
-from data.utils import send_telegram_message, safe_float, get_google_sheet_data,  update_google_sheet  # 👈 import here
+from django.conf import settings
+from datetime import datetime, timedelta
+from data.models import Stocks50MA, StockPriceData
+from django.core.management.base import BaseCommand
+
+from oauth2client.service_account import ServiceAccountCredentials
+from infra.utils.telegram import send_telegram
+from infra.utils.infra import date_format, safe_float
+from infra.utils.gfinance import get_gfinance_data, filter_stock, update_gfinance_data
 
 class Command(BaseCommand):
     help = "Fetch latest stock Current Market Prices from Google Fiance and store in Data"
     
     def handle(self, *args, **kwargs):
-        self.stdout.write('Fetched latest stock prices...')
+        self.stdout.write(self.style.SUCCESS('Stocks latest prices Updated'))
     
-    #stocks = Stocks50MA.objects.all()
     stock_list = Stocks50MA.objects.values_list('script', flat=True)
     print("Total Stocks of 50MA: ", len(stock_list))
     
@@ -29,18 +30,18 @@ class Command(BaseCommand):
     *   
     '''    
     # Push stocks to Google Sheet (getCMP)
-    list_result = update_google_sheet("getCMP", stock_list)
-    print(f"Get CMP for {len(stock_list)} in google finance: ", list_result)
-'''
-    # Using AppScript to copy getCMP values to marketPrice Sheet.
-    copyGF_cmp = "https://script.google.com/macros/s/AKfycbyoKhcfb7ehHKe_VuL6ENv6Hg-oautHDbMQlCamkQgRyF9uakhpulCPQqiLDKJUSGw7/exec?sheet=getCMP"
+    list_data = update_gfinance_data("getCMP", stock_list)
+    print(f"Get CMP for {len(stock_list)} in google finance: ", list_data)
 
-    response = requests.get(copyGF_cmp)
+    # Using AppScript to copy getCMP values to marketPrice Sheet.
+    copy_GF_cmp = config('GSHEET_APP_SCRIPT_CMP')
+
+    response = requests.get(copy_GF_cmp)
     print("sheet response:", response)
 
     # Get SMA50 Value from marketPrice Sheet
     spreadsheet_id, sheet_name, api_key = settings.GSHEET_ID, "marketPrice", settings.GSHEET_KEY
-    gsheet_data = get_google_sheet_data(spreadsheet_id,sheet_name, api_key)
+    gsheet_data = get_gfinance_data(spreadsheet_id,sheet_name, api_key)
     print(gsheet_data)
     rows = gsheet_data.get("values", [])
     headers = rows[0]
@@ -62,7 +63,7 @@ class Command(BaseCommand):
                     "cp50ma": row_dict.get("CP50MA%"),
                 }
             )
-'''
+
 for i in range(1):
     print(i)
     # Step 1: Create a script:cmp dict from StockPriceData
@@ -75,6 +76,7 @@ for i in range(1):
 
     for stock in Stocks50MA.objects.all():
         live_data = sma_map.get(stock.script)
+        
         if live_data.live50ma is None:
             continue  # No price data available, skip
 
@@ -90,9 +92,9 @@ for i in range(1):
         elif crr_50sma > 6: #1
             stock.status = 1
         elif sma_price < cmp_price:
-            stock.status = 8
+            stock.status = 8 #8
         else:
-            stock.status = 6
+            stock.status = 6 #6
         
         print(f"Status: {stock.script} - c:{crr_50sma} - sma:{sma_price} - p:{cmp_price} - status:{stock.status}")
         stocks_to_update.append(stock)

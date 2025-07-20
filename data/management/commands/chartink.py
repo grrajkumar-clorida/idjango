@@ -3,20 +3,27 @@ import django
 import os
 import gspread
 import requests
+from decouple import config
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from django.core.management.base import BaseCommand
-from data.models import Source
+#from data.models import Source
 from django.conf import settings
 from oauth2client.service_account import ServiceAccountCredentials
 from data.models import Stocks50MA
 from datetime import datetime
 from django.core.mail import send_mail
-from data.utils import send_telegram_message, moving_average, get_google_sheet_data, filter_stock, update_google_sheet, date_format
+from infra.utils.telegram import send_telegram
+from infra.utils.infra import date_format, safe_float
+from infra.utils.gfinance import get_gfinance_data, filter_stock, update_gfinance_data
+#from stocks.utils.telegram_bot import send_telegram_message
+
+#from data.utils import send_telegram_message, moving_average, get_google_sheet_data, filter_stock, update_google_sheet, 
 # 👈 import here
 #from stocks.utils.telegram_bot import send_telegram_message
+
 
 class Command(BaseCommand):
     help = "Fetch 50ma-setup data from chartink using selenium, store in App"
@@ -24,7 +31,7 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         file_path = os.path.join(settings.MEDIA_ROOT, "result_1.html")  # ✅ Correct file system path
         output_csv = "/home/gr8/Documents/gr8/processed_stock_data.csv"  # Update path
-
+        self.stdout.write(self.style.SUCCESS("50MA stocks are added"))
 
 # Setup Django environment
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "idjango.settings")  # Replace with your project
@@ -61,6 +68,7 @@ def extract_table_rows():
             chg_percent = cols[4].text.replace("%", "").replace(",", "").strip()
             ltp = cols[5].text.replace(",", "")
             vol = cols[6].text.strip
+            
             if float(chg_percent) < 6:
                 new_stock_list.append(script)
 
@@ -88,29 +96,30 @@ while True:
         break
 
 print('Fetch SMA Price from Google Finance:')
-# Fetch SMA value from Googel Finance Sheet 
-#configurations
-spreadsheet_id = settings.GSHEET_ID
-api_key = settings.GSHEET_KEY
-sheet_name = "50ma"
+'''
+    * Fetch SMA value from Googel Finance Sheet
+    * 
+    * 
+'''
 
-# pass the new stock list to get SMA50 Values
-list_result = update_google_sheet("googleFinace", new_stock_list)
-print(list_result)
-copyGF_sma = "https://script.google.com/macros/s/AKfycbxASs3R5yVgLf52CKbE5Yb72UWeMCnhQxCMOr9V1CW7qd18D_F775hfulhv8K8VSuo/exec?sheet=googleFinace"
-response = requests.get(copyGF_sma)
+#configurations
+spreadsheet_id, sheet_name, api_key = settings.GSHEET_ID, "50ma", settings.GSHEET_KEY 
+
+'''
+    # pass the new stocks list to get SMA50 Values
+    #
+'''
+
+list_data = update_gfinance_data("googleFinace", new_stock_list)
+print(list_data)
+copy_GF_sma = config('GSHEET_APP_SCRIPT')
+response = requests.get(copy_GF_sma)
 print(response)
 
 # Get SMA50 Value from Sheet
-gsheet_data = get_google_sheet_data(spreadsheet_id, sheet_name, api_key)
+gsheet_data = get_gfinance_data(spreadsheet_id, sheet_name, api_key)
 rows = gsheet_data.get("values", [])
 headers = rows[0]
-
-def safe_float(val):
-    try:
-        return float(val)
-    except (ValueError, TypeError):
-        return 0.00
 
 sma50Stocks = []
 
@@ -136,6 +145,7 @@ for row in rows[1:]:
                 "target_1": obj.target_1,
                 "target_2": obj.target_2,
             }
+
             # Initialize as list if None
             if not isinstance(obj.pre_data, list):
                 obj.pre_data = []
@@ -181,6 +191,7 @@ for row in rows[1:]:
 bot_txt += "+--------+----------------------+--------+--------+------------+\n"
 #bot_txt += "```"  # End monospaced block
 
-send_telegram_message(bot_txt)
+send_telegram(bot_txt)
+print()
 driver.quit()
 

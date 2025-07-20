@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 import os
 from pathlib import Path
+from decouple import config, Csv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,10 +21,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-!t2igao!z916vbiel$bd#zq46t1ns5*4iq)19)9z-rl(a5ih=8'
+SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG')
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.pythonanywhere.com']
 
@@ -35,6 +36,7 @@ INSTALLED_APPS = [
     'coredata',
     'data',
     'stocks',
+    'infra',
     'django.contrib.humanize',
     'django_celery_beat',
     'django_extensions', 
@@ -78,18 +80,17 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'idjango.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'idjango',
-        'USER': 'gr8',
-        'PASSWORD': 'gr8@php4U',
-        'HOST': 'localhost',
-        'PORT': '3306',
+        'NAME': config('DATABASE_NAME'),
+        'USER': config('DATABASE_USER'),
+        'PASSWORD': config('DATABASE_PASSWORD'),
+        'HOST': config('DATABASE_HOST', default='localhost'),
+        'PORT': config('DATABASE_PORT', default='3306'),
         'OPTIONS': {
             'unix_socket': '/var/run/mysqld/mysqld.sock',  # Match your MySQL socket path
         },
@@ -133,25 +134,29 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
+
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 MEDIA_URL = 'media/'
 
 #Email Default and Telgram Config
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 465
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = "pel247commerce@gmail.com"
-EMAIL_HOST_PASSWORD = "Pel@247comuk#"
+EMAIL_HOST = config('EMAIL_HOST')
+EMAIL_PORT = config('EMAIL_PORT')
+EMAIL_USE_TLS = config('EMAIL_USE_TLS')
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Breeze API Credentials
-BREEZE_API_KEY = "7(#37242uZ313x83183830920d8056Vt"
-BREEZE_SECRET_KEY = "622(60u2XJ01148688u585680A50DG57"
-BREEZE_SESSION = "52171113"
-GSHEET_KEY = "AIzaSyCYumtaCBIA12Es-AAAAAAAAAAAAAAAAAA"
-GSHEET_ID = "14CUwh-XvNjtRRxK6aHVjIDDDDDDDDDDDDWDCRFB4EE4"
+BREEZE_API_KEY = config('BREEZE_API_KEY')
+BREEZE_SECRET_KEY = config('BREEZE_SECRET_KEY')
+BREEZE_SESSION = config('BREEZE_SESSION')
+GSHEET_KEY = config('GSHEET_KEY')
+GSHEET_ID = config('GSHEET_ID')
 
 # Redis as Message Broker
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
@@ -168,6 +173,6 @@ CHANNEL_LAYERS = {
 }
 USE_TZ = False
 #Telegram Bot
-TELEGRAM_BOT_TOKEN = "740452841:AAGw8COsKG-xxxx_8puYWW2HaQCfLgTEZjg"
-TELEGRAM_CHAT_ID = "-4629900005"
+TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN')
+TELEGRAM_CHAT_ID = config('TELEGRAM_CHAT_ID')
 TEMPLATES[0]['OPTIONS']['context_processors'].append('coredata.context_processors.coredata_context')
