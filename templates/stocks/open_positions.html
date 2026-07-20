@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}Open Positions - Trading Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h2><i class="fas fa-briefcase mr-2"></i>Positions</h2>
+            <p class="text-muted">View and manage your trading positions</p>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Total Positions</h6>
+                    <h3 class="mb-0">{{ total_positions }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card {% if total_pl >= 0 %}bg-success{% else %}bg-danger{% endif %} text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Total P/L</h6>
+                    <h3 class="mb-0">₹{{ total_pl|floatformat:2 }}</h3>
+                    <small>{{ avg_pl_percent|floatformat:2 }}%</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Total Invested</h6>
+                    <h3 class="mb-0">₹{{ total_invested|floatformat:2 }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Day P/L</h6>
+                    <h3 class="mb-0">₹{{ total_day_pl|floatformat:2 }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Win/Loss Summary -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <span class="badge badge-success" style="font-size: 1rem; padding: 8px 16px;">
+                                <i class="fas fa-arrow-up mr-1"></i>Winning: {{ winning_positions }}
+                            </span>
+                        </div>
+                        <div class="col-md-4">
+                            <span class="badge badge-danger" style="font-size: 1rem; padding: 8px 16px;">
+                                <i class="fas fa-arrow-down mr-1"></i>Losing: {{ losing_positions }}
+                            </span>
+                        </div>
+                        <div class="col-md-4">
+                            <span class="badge badge-secondary" style="font-size: 1rem; padding: 8px 16px;">
+                                <i class="fas fa-minus mr-1"></i>Breakeven: {{ breakeven_positions }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" action="{% url 'stock_positions' %}" class="row">
+                        <div class="col-md-3">
+                            <label>Status Filter</label>
+                            <select name="status" class="form-control" onchange="this.form.submit()">
+                                <option value="0" {% if status_filter == '0' %}selected{% endif %}>Open Positions</option>
+                                <option value="1" {% if status_filter == '1' %}selected{% endif %}>Closed Positions</option>
+                                <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Positions</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label>Sort By</label>
+                            <select name="sort" class="form-control" onchange="this.form.submit()">
+                                <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>Newest First</option>
+                                <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Oldest First</option>
+                                <option value="-overall_pl" {% if sort_by == '-overall_pl' %}selected{% endif %}>P/L: High to Low</option>
+                                <option value="overall_pl" {% if sort_by == 'overall_pl' %}selected{% endif %}>P/L: Low to High</option>
+                                <option value="ticker" {% if sort_by == 'ticker' %}selected{% endif %}>Ticker: A-Z</option>
+                                <option value="-ticker" {% if sort_by == '-ticker' %}selected{% endif %}>Ticker: Z-A</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label>Search</label>
+                            <input type="text" name="search" class="form-control" 
+                                   placeholder="Search by ticker, script, or order ID" 
+                                   value="{{ search_query }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label>&nbsp;</label>
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <i class="fas fa-search mr-1"></i>Search
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Positions Table -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Positions List</h5>
+                </div>
+                <div class="card-body">
+                    {% if positions %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped table-hover">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Stock</th>
+                                    <th>Quantity</th>
+                                    <th>Entry Price</th>
+                                    <th>Current Price</th>
+                                    <th>Invested Value</th>
+                                    <th>Current Value</th>
+                                    <th>Day P/L</th>
+                                    <th>Overall P/L</th>
+                                    <th>P/L %</th>
+                                    <th>Stop Loss</th>
+                                    <th>Targets</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for position in positions %}
+                                <tr class="{% if position.overall_pl > 0 %}table-success{% elif position.overall_pl < 0 %}table-danger{% endif %}">
+                                    <td><code>{{ position.order_id }}</code></td>
+                                    <td>
+                                        <strong>{{ position.ticker }}</strong><br>
+                                        <small class="text-muted">{{ position.script }}</small>
+                                    </td>
+                                    <td>{{ position.qty }}</td>
+                                    <td>₹{{ position.price|floatformat:2 }}</td>
+                                    <td>
+                                        {% if position.current_value and position.qty %}
+                                            ₹{{ position.current_value|floatformat:2 }}
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>₹{{ position.invested_value|floatformat:2 }}</td>
+                                    <td>₹{{ position.current_value|floatformat:2 }}</td>
+                                    <td class="{% if position.day_pl >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        ₹{{ position.day_pl|floatformat:2 }}
+                                    </td>
+                                    <td class="{% if position.overall_pl >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        <strong>₹{{ position.overall_pl|floatformat:2 }}</strong>
+                                    </td>
+                                    <td class="{% if position.overall_pl >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        {% if position.pl_percent %}
+                                            {{ position.pl_percent|floatformat:2 }}%
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if position.stop_loss %}
+                                            ₹{{ position.stop_loss|floatformat:2 }}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if position.targets %}
+                                            <small>{{ position.targets }}</small>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if position.status == 0 %}
+                                            <span class="badge badge-success">Open</span>
+                                        {% elif position.status == 1 %}
+                                            <span class="badge badge-secondary">Closed</span>
+                                        {% else %}
+                                            <span class="badge badge-warning">Status {{ position.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>{{ position.created_at|date:"M d, Y" }}</small><br>
+                                        <small class="text-muted">{{ position.created_at|time:"H:i" }}</small>
+                                    </td>
+                                    <td>
+                                        {% if position.status == 0 %}
+                                            <button class="btn btn-sm btn-danger" onclick="closePosition('{{ position.order_id }}')">
+                                                <i class="fas fa-times mr-1"></i>Close
+                                            </button>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if positions.has_other_pages %}
+                    <nav aria-label="Positions pagination">
+                        <ul class="pagination justify-content-center mt-3">
+                            {% if positions.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ positions.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">Previous</a>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Page {{ positions.number }} of {{ positions.paginator.num_pages }}
+                                </span>
+                            </li>
+
+                            {% if positions.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ positions.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ positions.paginator.num_pages }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">Last</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+
+                    {% else %}
+                    <div class="alert alert-info text-center">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        No positions found matching your criteria.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS for tooltips and modals -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<script>
+function closePosition(orderId) {
+    if (confirm('Are you sure you want to close position ' + orderId + '?')) {
+        // TODO: Implement close position API call
+        alert('Close position functionality to be implemented');
+        // Example:
+        // fetch('/api/trading/positions/' + orderId + '/close/', {
+        //     method: 'POST',
+        //     headers: {
+        //         'X-CSRFToken': getCookie('csrftoken')
+        //     }
+        // }).then(response => {
+        //     if (response.ok) {
+        //         location.reload();
+        //     }
+        // });
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+
+<style>
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.table-responsive {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.table thead th {
+    position: sticky;
+    top: 0;
+    background-color: #343a40;
+    color: white;
+    z-index: 10;
+}
+</style>
+{% endblock %}

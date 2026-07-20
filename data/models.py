@@ -19,13 +19,13 @@ class Source(models.Model):
 class StockPriceData(models.Model):
     stock_code = models.CharField(max_length=10, db_index=True)  # e.g., TCS, INFY
     script = models.CharField(max_length=50, null=True)
-    date = models.DateField(db_index=True)  # Trading Date
+    date = models.DateField(db_index=True, null=True)  # Trading Date
     close_price = models.FloatField()  # Closing Price
     live50ma = models.FloatField(blank=True, null=True)
     cp50ma = models.FloatField(blank=True, null=True)
     live21ma = models.FloatField(blank=True, null=True)
     live9ma = models.FloatField(blank=True, null=True)
-    
+    live921 = models.CharField(max_length=20, db_index=True, null=True)  # 2.64 | 0.63%
     class Meta:
         unique_together = ('stock_code', 'date')  # No duplicates
         ordering = ['-date']
@@ -38,17 +38,22 @@ class Stocks50MA(models.Model):
     script = models.CharField(max_length=50, null=True)
     date = models.DateField(db_index=True, blank=True, null=True)  # Date of the MA calculation
     moving_average_50 = models.FloatField()  # 50-Day Moving Average value
-    moving_average_20 = models.FloatField(blank=True, null=True)  # 20-Day Moving Average value
+    moving_average_20 = models.FloatField(blank=True, null=True)  # 21-Day Moving Average value
+    moving_average_09 = models.FloatField(blank=True, null=True)  # 9-Day Moving Average value
     stock_cmp = models.FloatField(blank=True,null=True)
     status = models.IntegerField(default=0)
     cmp_date = models.DateTimeField(blank=True, null=True)
     range_50ma = models.FloatField(blank=True,null=True)
-    percent_50sma = models.FloatField(blank=True,null=True)
+    percent_50ma = models.FloatField(blank=True,null=True)
+    range_20ma = models.FloatField(blank=True,null=True)
+    percent_20ma = models.FloatField(blank=True,null=True)
+    range_09ma = models.FloatField(blank=True,null=True)
+    percent_09ma = models.FloatField(blank=True,null=True)
     name = models.CharField(max_length=200, null=True)
     target_1 = models.FloatField(blank=True,null=True)
     target_2 = models.FloatField(blank=True,null=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
-
+    updated_at = models.DateTimeField(auto_now_add=False, null=True)
     # ✅ New field to store snapshot
     pre_data = models.JSONField(null=True, blank=True)
 

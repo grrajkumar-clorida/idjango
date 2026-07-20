@@ -27,3 +27,40 @@ python manage.py convert_html_to_csv
 Do backtesting - b4 statergy
 
 lsof -i :8000
+
+
+status_set = {'0 - Invalid', '1 - Over Value', '2- Stoploss', '3- Completed', '4- New', '5- Update', '6- Entry', 
+        '7- Confirmation', '8- Order', '9- Target 1', '10- Target 2', '11- Target 3', '12- Above T3'}
+
+
+Fetch 9,21,50ma price, CMP, current 50MA, 
+once get all the data. analysis below condisions.
+
+1) 	0 	Trade is valide. (CMP > 50MA) else trade is invalid 0 (Invalid)
+2) 	4 	New Ticker (New Record)
+3)	1 	CMP is status above 50MA & Price different >6% (Over Value)
+4)	2 	CMP is status Below 50MA & Price different >-1% (Stop Loss hit)
+5)	3 	CMP is status above Target 3 or got profit (Trade done)
+6)	5 	CMP is status above 50MA & price new entry or staus chage from (0-3) (Re-entry)
+7)	6 	CMP is status above 50MA (Valid Trade start)
+8) 	7 	CMP is status above 50MA and next Date after entry candle close above Entry close price. (Trade Confirmation)
+9)  8 	CMP is Above confirmation so place order (Long entry)
+10) 9 	CMP is rached Target one (T1)
+11) 10  CMP is rached Target Two (T2)
+12) 11  CMP is rached Target Three (T3)
+13) 12  CMP is above T3 so hold for long profit 
+14) 13 
+
+
+[{"cmp_date": null, "target_1": 238.17, "target_2": 249.0, "stock_cmp": 216.52, "range_50ma": 16.51, "moving_average_50": 200.01}, {"cmp_date": "2025-07-10T00:00:00", "target_1": 238.17, "target_2": 249.0, "stock_cmp": 216.52, "range_50ma": 16.51, "moving_average_50": 200.01}, {"cmp_date": "2025-07-10T00:00:00", "target_1": 238.17, "target_2": 249.0, "stock_cmp": 216.52, "range_50ma": 16.51, "moving_average_50": 200.01}]
+
+Checking data
+1) table price, 9,21,50ma, CMP, CMP50.
+2) springpad smc points 9, 21 cross points 
+3) check price from 52w low 
+
+1 	HBLENGINE
+2 	BANKBARODA
+7 	DCAL
+8 	GREAVESCOT
+

@@ -1,14 +1,15 @@
 {% load humanize %}
+<p>Total Stocks Table: {{ total_stocks }}</p>
 <table id="stock-table" class="display table table-bordered table-striped table-hover">
     <thead>
         <tr>
             <th>Id</th>
             <th>Stock Code</th>
             <!-- <th>Name</th> -->
-            <th>CMP</th>
-            <th colspan="2">SMA</th>
-            <th> 50SMA In %</th>
-            <th colspan="2">Live Data</th>
+            <th colspan="2">SMA: value | Range | %</th>
+            <th colspan="1">SMA</th>
+            <!-- <th colspan="2"> 50SMA In %</th>
+            <th>Live Data</th> -->
             <th>Note</th>
             <th>Status</th>
             <th>Trade</th>
@@ -19,27 +20,26 @@
         {% for stock in stocks %}
         <tr>
             <td>{{ stock.id }}</td>
-            <td><a href="https://in.tradingview.com/chart/?symbol=NSE%3A{{stock.script}}" name="script" title="{{ stock.name}}" target="_blank">{{ stock.script }}</a> {{stock.stock_code}}</td>
-            <!-- <td>{{ stock.name}}</td> -->
             <td>
+                <a href="https://in.tradingview.com/chart/?symbol=NSE%3A{{stock.script}}" name="script" title="{{ stock.name}}" target="_blank">{{ stock.script }}</a> {{stock.stock_code}}
                 <p>Price: {{ stock.stock_cmp }}</p>
-                <p>50MA:  {{ stock.moving_average_50 }}</p>
             </td>
-            <td colspan="2">
-                <p>Live SMA</p>
-                <p>50: {{ stock.live50ma }}</p>
-                <p>20: {{ stock.live21ma }}</p>
-                <p>09: {{ stock.live09ma }}</p>                
+            <!-- <td>{{ stock.name}}</td> -->
+            <td colspan="2">                
+                <p>50 : {{ stock.moving_average_50 }} | {{ stock.range_50ma }} | {{ stock.percent_50ma }} </p>
+                <p>20 : {{ stock.moving_average_20 }} | {{ stock.range_20ma }} | {{ stock.percent_20ma }} </p>
+                <p>09 : {{ stock.moving_average_09 }} | {{ stock.range_09ma }} | {{ stock.percent_09ma }} </p>
             </td>
-            <td>
-                <p>50SMA:{{ stock.percent_50sma }}% <p>
-                <p>Crr_50:{{stock.cp50ma}}%</p>
+            <td> 
+                <p>50MA: {{ stock.live50ma }} | {{ stock.cp50ma }} | {{ stock.cp50ma }} </p>
+                <p>9-20MA: {{ stock.live21ma }} | {{ stock.live09ma }}</p>
+                <p>{{ stock.live_price }} | {{stock.live_change}} | {{ stock.live921 }}  </p>
             </td>
-            <td  colspan="2">
+            <!-- <td  colspan="2">
                 <p>CMP: {{ stock.live_price }}</p>
                 <p>chg: {{stock.live_change}}</p>
                 <p>50 >: {{stock.sma50_range}}</p>
-            </td>
+            </td> -->
             <td>
                 <!--  Note -->
                 {% if stock.cp50ma %}
@@ -48,13 +48,13 @@
                     {% else %}
                         <span style="color:green;">Valid CP 50</span>
                     {% endif %}
-                {% elif stock.percent_50sma > 6 %}
+                {% elif stock.percent_50ma > 6 %}
                     <span style="color:red;">Over Value</span>
                 {% else %}
-                    <span style="color:green;">Valid</span>
+                    <span style="color:green;">Valid ,</span>
                 {% endif %}
             </td>
-            <td>
+            <td><p>{{stock.status}}</p>
                 {% if stock.status == 0 %}
                     <b>Invalid</b>
                 {% elif stock.status == 1 %}
@@ -62,30 +62,26 @@
                 {% elif stock.status == 2 %}
                     <b>Stoploss</b>
                 {% elif stock.status == 3 %}
-                    <b>Stoploss</b>
+                    <b>Completed</b>
                 {% elif stock.status == 4 %}
-                    <b>Stoploss</b>
-                {% elif stock.status == 5 %}
-                    <b>Stoploss</b>
-                {% elif stock.status == 6 %}
                     <b>New</b>
-                {% elif stock.status == 7 %}
-                    <b>updated 50MA</b>
-                {% elif stock.status == 8 %}
+                {% elif stock.status == 5 %}
+                    <b>Update</b>
+                {% elif stock.status == 6 %}
                     <b>Entry</b>
-                {% elif stock.status == 9 %}
-                    <b>Confirmation</b>
-                {% elif stock.status == 10 %}
+                {% elif stock.status == 7 %}
+                    <b>Confirmation 50MA</b>
+                {% elif stock.status == 8 %}
                     <b>Order</b>
-                {% elif stock.status == 11 %}
+                {% elif stock.status == 9 %}
                     <b>Target 1</b>
-                {% elif stock.status == 12 %}
+                {% elif stock.status == 10 %}
                     <b>Target 2</b>
-                {% elif stock.status == 13 %}
+                {% elif stock.status == 11 %}
                     <b>Target 3</b>
-                {% elif stock.status == 14 %}
+                {% elif stock.status == 12 %}
                     <b>Above T3</b>
-                {% elif stock.status == 15 %}
+                {% elif stock.status == 13 %}
                     <b>Altra</b>
                 {% else %}
                     <b>Out of Range</b>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>GR8 Algo Trading</title>
+    <title>RBYnex Trading</title>
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
     <!-- Google Fonts -->
@@ -16,57 +16,8 @@
 </head>
 <body>
     <header>
-      {% include 'nav.html' %}
-    <!-- Navbar -->
-        <nav class="navbar navbar-expand-lg bg-body fixed-top">
-        <div class="container-fluid d-flex">
-          <button data-mdb-collapse-init class="navbar-toggler" type="button" data-mdb-target="#navbarExample01"
-            aria-controls="navbarExample01" aria-expanded="false" aria-label="Toggle navigation" >
-            <i class="fas fa-bars"></i>
-          </button>
-          <div class="collapse navbar-collapse" id="navbarcoral">
-            <div class="logo">
-                <a class="navbar-brand" href="{% url 'home' %}">
-                    {% load static %}
-                    <img src="{% static 'ai.png' %}" alt="Alogo Trading" width="" height="">
-                </a>
-            </div>
-            <div class="d-flex">
-              <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                <li class="nav-item active">
-                  <a class="nav-link text-white" title="Home" aria-current="page" href="{% url 'home' %}">Home</a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link text-white" title="Features"href="#">Features</a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link text-white" title="About Corla Textiles"href="">About Us</a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link text-white" title="Contct Corla Textiles"href="">Contact Us</a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link text-white" title="Daily Production Status Report"href="/data">50MA</a>
-                </li>
-                <!-- {% if user.is_authenticated %}
-                  <li class="nav-item"><a class="nav-link text-white" title="Daily Production Report" href="{% url 'log_report' %}">DPR</a></li>
-                  <li class="nav-item"><a class="nav-link text-white" title="Product Report" href="{% url 'production_report' %}">Production Report</a></li>
-                {% endif %} -->
-              </ul>
-            </div>
-            <div class="d-flex ml-auto">
-              <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                <!-- {% if user.is_authenticated %}
-                <li class="nav-item"><a class="nav-link text-white" title="Logout" href="{% url 'logout' %}">Logout</a></li>
-                  {% else %}
-                  <li class="nav-item"><a class="nav-link text-white" title="Login" href="{% url 'login' %}">Login</a></li>
-                  {% endif %} -->
-              </ul>
-            </div>
-          </div>
-        </div>
-        </nav>
-    <!-- Navbar -->
+        {% include 'nav.html' %}
+        {% include 'menu.html' %}
     <!-- Background image -->
     <div class="p-5 text-center bg-image" style="
       background-image: url('https://mdbcdn.b-cdn.net/img/new/slides/041.webp');
@@ -75,8 +26,8 @@
         <div class="mask" style="background-color: rgba(0, 0, 0, 0.6);">
           <div class="d-flex justify-content-center align-items-center h-100">
             <div class="text-white">
-              <h1 class="mb-3">CORAL TEXTILES</h1>
-              <h4 class="mb-3">Service</h4>
+              <h1 class="mb-3">RBYnex</h1>
+              <h4 class="mb-3">Trading</h4>
               <a data-mdb-ripple-init class="btn btn-outline-light btn-lg" href="#!" role="button"
               >Call to action</a
               >
@@ -103,10 +54,10 @@
               <!-- Grid column -->
               <div class="col-md-3 col-lg-3 col-xl-3 mx-auto mt-3">
                 <h6 class="text-uppercase mb-4 font-weight-bold">
-                  CORAL TEXTILES
+                  Idjango
                 </h6>
                 <p class="footer-pg">
-                  CORAL TEXTILES, we understand that quality begins with the fabric. <br/>
+                  Idjango alogtrading, we understand that quality begins with the fabric. <br/>
                   <a href="https://www.mayercie.com/en/circular-knitting-machines/" class="footer-link" title="Mayer & Cie is a world leading supplier of circular knitting machines">Mayer & Cie</a> circular-knitted fabrics
                   content. Lorem ipsum dolor sit amet, consectetur adipisicing
                   elit.

@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "idjango-888",
+  "private_key_id": "4e0163c2f1b5f3bba9738807a74bfd211f249f7b",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC/mO71cKZZ8uhI\n2K8SGVh711HGBnEy89QIX6y4YH+KlqqYVP9t3PcltaP67M1kuaOZzT+chikgqp0S\n+V7sPVUUOXVmE7L/RHDyg+MAgW+ThXZxJ0XZ1Dfz8Htu966B2L7ejOcPceP1Io5m\nnohpSWa9l2f1XW5wOM6lYGsExSajwDHhJEQ3d8R/EOL1ZELSKwgB+skGgtSDoC4u\nBNmJ4apYecIgNMtRyujuqWqHOnHD/ZB55t0HmjmXfFgEluiHAAowVqznZvMN7XT8\n7MnCekNxf6eSpEo5lpHUrlBCN/Bv0MXvtWIdAxFVxEKUXwiIZ+TvTqSYOHrxv+2a\nHCMmtokvAgMBAAECggEAFL3i2f781fkGLONe/z0aMfyglX5bYTI5+UFuSomRKnje\nyrNM8bZS/9SXBieo9qdi2YLO86F8hf+iazbu5UaggBorpkYqAcOFh2OVaW0ZyKUm\nqjT1Cry+5UbaqKvh9ZxNfCdR2P9cjSGqu9ucFesvLFrd6MIEHjGwLAFw+dO5YqRQ\nIPWDlFtMPi8LR5iBq94GtMzlJsQuX12UyCiWm9fAyUJFDIvGrZZhBx91WHV1YZwc\nZR5l27DdRdLJeQ4qalT/mGHtXscG8EvTGe+ju5S6+eLBvFVKT2VidMEBM1K2hkiF\n03lgHnYRnfS6xZLDOoVvuV9EccrgrfQnmq+BJUqSYQKBgQD3xW7y6W4YMmoiKFxQ\n6j1HNbMyaveOdc0dTUmAdh7sLFLJVG5HSpzZumiMObsyqAhllN87lliiPi/869h0\ngYxmhOxHWpo/zE3to7Hl5ewpZBQ5EJZ+x0OVbKAelYI3VYWU2XSI6JFrKX67AUI4\npDYOJmTqojIj/ySbydHmT8eI4QKBgQDF9egXJn7lUpaxEeJkMKuNCaiS9RnfgW3D\nxdGjKctLuVwFLEdVpI1WW+J1myXaBXdrZuwvRJJpWUi5kQtaL61vKu5B5iZbkGA+\nWBQnxFzv6nDyq1ftYCM0tuEZNHAKgVNrr2eV9XR6kPQeeSHAIY8oZHvA1q/7pAfj\n2H0k7iIEDwKBgHJSj7nXSSwy/tOZ6daP7gxQU8mcn3MFGco+Yf67AdOZM+2fXm7Y\nl3zCzQB+lshtzcoJIeNdoLHjncLGk45WRBD9ngPiYy+ytfZDRI8+QnRqsAYQiFAg\n4ycsAsl51KZxeHxQxbtyC771W3svvn1iD2sB/ihhBF+llx+mxInPH9MhAoGBAIvY\n7r78CQVEVQR+V+rjny2htx8qW77TlpGJPFICAoZaSjG1WCeeeeKaQt9GXXUqC3Uq\nXov961jVJFVDrDtoFyPDtlGDn3FsCzG/021MgUNT4brtZM5i7jwdPeQqcURanG4k\nmg8MOd8ka/DjLf6nNpUYd3yBrg0dkh1aIP5n5EvtAoGBANPHMvGi9mLRqhr8PP2m\n4dhTKSCAkshOXN36t9k/u1iBsRW3+oO9z/v0TC4B1J5/Isg6KD5nrm7dJnOv9Drl\notvJ+6PSrCgoaHr4RC4zEipNuoinXDVoO4Uamfa6suniN9znRvOg+RE0lQgQFwai\nvoJrGEzx+caQsXa7lzEMwISW\n-----END PRIVATE KEY-----\n",
+  "client_email": "algo-idjango@idjango-888.iam.gserviceaccount.com",
+  "client_id": "109017366545730464643",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/algo-idjango%40idjango-888.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

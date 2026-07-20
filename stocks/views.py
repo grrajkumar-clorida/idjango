@@ -1,13 +1,9 @@
 from django.shortcuts import render, redirect
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth import authenticate, login
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
-from django.contrib.auth import logout
 from datetime import datetime, timedelta
-from .models import Stock, StockData, LiveTrade, BacktestResult
+from .models import Stock, StockData, LiveTrade, BacktestResult, Orders
 from django.http import JsonResponse
-from stocks.breeze_client import BreezeAPI
+from infra.utils.breeze_client import BreezeAPI
 from django.core.mail import send_mail
 from django.conf import settings
 #import
@@ -23,28 +19,93 @@ def home(request):
     # #employees = User.objects.all()
     return render(request, 'home.html')
 
-def user_login(request):
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            login(request, user)
-            return redirect('home')  # Redirect to the home page after successful login
+def open_positions(request):
+    """Display open positions with filtering, pagination, and statistics"""
+    from django.core.paginator import Paginator
+    from django.db.models import Sum, Q, Avg, Count
+    
+    # Get filter parameters
+    status_filter = request.GET.get('status', '0')  # Default to open positions
+    search_query = request.GET.get('search', '')
+    sort_by = request.GET.get('sort', '-created_at')
+    
+    # Base queryset - filter by status
+    if status_filter == 'all':
+        positions = Orders.objects.all()
+    elif status_filter == '0':
+        positions = Orders.objects.filter(status=0)  # Open positions
+    elif status_filter == '1':
+        positions = Orders.objects.filter(status=1)  # Closed positions
+    else:
+        positions = Orders.objects.filter(status=int(status_filter))
+    
+    # Apply search filter
+    if search_query:
+        positions = positions.filter(
+            Q(ticker__icontains=search_query) |
+            Q(script__icontains=search_query) |
+            Q(order_id__icontains=search_query)
+        )
+    
+    # Apply sorting
+    valid_sort_fields = ['created_at', '-created_at', 'ticker', '-ticker', 'overall_pl', '-overall_pl', 'invested_value', '-invested_value']
+    if sort_by in valid_sort_fields:
+        positions = positions.order_by(sort_by)
+    else:
+        positions = positions.order_by('-created_at')
+    
+    # Pagination
+    paginator = Paginator(positions, 25)  # 25 positions per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Calculate statistics for current filtered set
+    total_positions = positions.count()
+    total_invested = positions.aggregate(total=Sum('invested_value'))['total'] or 0.0
+    total_current_value = positions.aggregate(total=Sum('current_value'))['total'] or 0.0
+    total_pl = positions.aggregate(total=Sum('overall_pl'))['total'] or 0.0
+    total_day_pl = positions.aggregate(total=Sum('day_pl'))['total'] or 0.0
+    
+    # Calculate average P/L percentage
+    if total_invested > 0:
+        avg_pl_percent = (total_pl / total_invested) * 100
+    else:
+        avg_pl_percent = 0.0
+    
+    # Count winning vs losing positions
+    winning_positions = positions.filter(overall_pl__gt=0).count()
+    losing_positions = positions.filter(overall_pl__lt=0).count()
+    breakeven_positions = positions.filter(overall_pl=0).count()
+    
+    # Calculate P/L percentage for each position (for template display)
+    positions_list = list(page_obj)
+    for position in positions_list:
+        if position.invested_value and position.invested_value > 0:
+            position.pl_percent = (position.overall_pl / position.invested_value) * 100
         else:
-            messages.error(request, 'Invalid username or password.')
-    return render(request, 'login.html')
-
-
-def user_logout(request):
-    logout(request)
-    return redirect('login')
-
-def about_us(request):
-	return render(request, 'about_us.html')
+            position.pl_percent = 0.0
+    
+    context = {
+        'positions': page_obj,
+        'total_positions': total_positions,
+        'total_invested': total_invested,
+        'total_current_value': total_current_value,
+        'total_pl': total_pl,
+        'total_day_pl': total_day_pl,
+        'avg_pl_percent': avg_pl_percent,
+        'winning_positions': winning_positions,
+        'losing_positions': losing_positions,
+        'breakeven_positions': breakeven_positions,
+        'status_filter': status_filter,
+        'search_query': search_query,
+        'sort_by': sort_by,
+    }
+    
+    return render(request, 'stocks/open_positions.html', context)
 
 def stock_dashboard(request):
-    stocks = StockData.objects.filter(symbol="ITC").order_by("date")
+    # Use 'stock' field instead of 'symbol'
+    stocks = StockData.objects.filter(stock="ITC").order_by("date")
     
     dates = [str(stock.date) for stock in stocks]
     prices = [stock.close_price for stock in stocks]

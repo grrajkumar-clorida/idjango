@@ -33,3 +33,9 @@ def get_today_nifty_pe():
         pe_ratio.append('Beg, Barrow, and investing in stocks')
 
     return pe_ratio
+
+
+def get_nifty_ticker():
+    nifty_50 = "https://www.screener.in/company/NIFTY/?sort=name&order=asc&limit=50"
+    nxt_nifty50 = "https://www.screener.in/company/NIFTYJR/?sort=name&order=asc&limit=50"
+    fetch_nifty_tickers(nifty_50, name='50')

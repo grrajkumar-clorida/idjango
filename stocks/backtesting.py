@@ -1,4 +1,4 @@
-from .breeze_client import BreezeAPI
+from infra.breeze_client import BreezeAPI
 from .models import BacktestResult
 from .strategies import moving_average_crossover, rsi_strategy
 import pandas as pd

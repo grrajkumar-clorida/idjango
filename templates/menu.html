@@ -1,0 +1,52 @@
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg bg-body fixed-top">
+  <div class="container-fluid d-flex">
+    <button data-mdb-collapse-init class="navbar-toggler" type="button" data-mdb-target="#navbarExample01"
+      aria-controls="navbarExample01" aria-expanded="false" aria-label="Toggle navigation" >
+      <i class="fas fa-bars"></i>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarcoral">
+      <div class="logo">
+          <a class="navbar-brand" href="{% url 'home' %}">
+              {% load static %}
+              <img src="{% static 'ai.png' %}" width="62px" alt="Alogo Trading" height="">
+          </a>
+      </div>
+      <div class="d-flex">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item active">
+            <a class="nav-link text-white" title="Home" aria-current="page" href="{% url 'home' %}">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-white" title="Features"href="#">Features</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-white" title="About Corla Textiles"href="">About Us</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-white" title="stocks"href="">Orders</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-white" title="Daily Production Status Report"href="/data">50MA</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-white" title="Daily Production Status Report"href="/stocks/positions">positions</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-white" title="Contct Corla Textiles"href="">Contact Us</a>
+          </li>
+        </ul>
+      </div>
+      <div class="d-flex ml-auto">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <!-- {% if user.is_authenticated %}
+          <li class="nav-item"><a class="nav-link text-white" title="Logout" href="{% url 'logout' %}">Logout</a></li>
+            {% else %}
+            <li class="nav-item"><a class="nav-link text-white" title="Login" href="{% url 'login' %}">Login</a></li>
+            {% endif %} -->
+        </ul>
+      </div>
+    </div>
+  </div>
+</nav>
+<!-- Navbar -->
