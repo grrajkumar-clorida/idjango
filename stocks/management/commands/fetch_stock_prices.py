@@ -1,10 +1,7 @@
 from django.core.management.base import BaseCommand
 from stocks.utils import get_live_price #fetch_and_store_stock_data
 from stocks.models import Stock, StockPrice
-'''
-    # Old Format to featch stock price. 
-    # Now using Google Fiance.
-'''
+
 class Command(BaseCommand):
     help = "Fetch latest stock prices from NSE and store in DB"
 

@@ -1,4 +1,4 @@
-from stocks.breeze_client import BreezeAPI
+from infra.utils.breeze_client import BreezeAPI
 from django.conf import settings
 from datetime import datetime, timedelta
 from django.utils import timezone

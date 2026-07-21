@@ -26,12 +26,13 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG')
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.pythonanywhere.com']
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    #'daphne',
     'django_htmx',
     'coredata',
     'data',
@@ -77,6 +78,13 @@ TEMPLATES = [
         },
     },
 ]
+
+ASGI_APPLICATION = "trading_app.asgi.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",  # For testing, use Redis in production
+    },
+}
 
 WSGI_APPLICATION = 'idjango.wsgi.application'
 
@@ -126,7 +134,7 @@ TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 
-USE_TZ = True
+USE_TZ = True  # Always use timezone-aware datetimes for Indian timezone
 
 
 # Static files (CSS, JavaScript, Images)
@@ -162,6 +170,85 @@ GSHEET_ID = config('GSHEET_ID')
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+
+# 50MA Automated Trading Configuration
+PAPER_TRADING_MODE = config('PAPER_TRADING_MODE', default=True, cast=bool)
+TRADING_ENABLED = config('TRADING_ENABLED', default=False, cast=bool)
+MAX_POSITION_SIZE = config('MAX_POSITION_SIZE', default=100000, cast=int)
+
+# Phase 2: Automated Trading Workflow Configuration
+MAX_PORTFOLIO_EXPOSURE = config('MAX_PORTFOLIO_EXPOSURE', default=50.0, cast=float)
+MAX_DAILY_LOSS = config('MAX_DAILY_LOSS', default=5000, cast=int)
+MAX_DRAWDOWN = config('MAX_DRAWDOWN', default=10.0, cast=float)
+
+# Strategy Configuration
+STRATEGY_UPDATE_INTERVAL = config('STRATEGY_UPDATE_INTERVAL', default=60, cast=int)  # seconds
+SIGNAL_VALIDATION_WINDOW = config('SIGNAL_VALIDATION_WINDOW', default=5, cast=int)  # seconds
+
+# Order Execution Configuration
+ORDER_MAX_RETRIES = config('ORDER_MAX_RETRIES', default=3, cast=int)
+ORDER_RETRY_DELAY = config('ORDER_RETRY_DELAY', default=1.0, cast=float)  # seconds
+
+# Monitoring Configuration
+MONITORING_ENABLED = config('MONITORING_ENABLED', default=True, cast=bool)
+ALERT_EMAIL_ENABLED = config('ALERT_EMAIL_ENABLED', default=True, cast=bool)
+
+# Celery Beat Schedule
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    # Execute orders every minute during market hours (9:15 AM - 3:30 PM IST)
+    'execute-50ma-orders': {
+        'task': 'data.tasks.execute_50ma_orders',
+        'schedule': crontab(minute='*/1', hour='9-15'),  # Every minute, 9 AM to 3 PM IST
+    },
+    # Monitor positions every minute during market hours
+    'monitor-50ma-positions': {
+        'task': 'data.tasks.monitor_50ma_positions',
+        'schedule': crontab(minute='*/1', hour='9-15'),
+    },
+    # Update statuses every 5 minutes
+    'update-50ma-statuses': {
+        'task': 'data.tasks.update_50ma_statuses',
+        'schedule': crontab(minute='*/5', hour='9-15'),
+    },
+    # Phase 2: Automated Trading Workflow Tasks
+    # Process strategy signals every minute during market hours
+    'process-strategy-signals': {
+        'task': 'stocks.tasks.process_strategy_signals',
+        'schedule': crontab(minute='*/1', hour='9-15'),  # Every minute during market hours
+    },
+    # Execute pending signals every minute during market hours
+    'execute-pending-signals': {
+        'task': 'stocks.tasks.execute_pending_signals',
+        'schedule': crontab(minute='*/1', hour='9-15'),  # Every minute during market hours
+    },
+    # Monitor positions every minute during market hours
+    'monitor-positions': {
+        'task': 'stocks.tasks.monitor_positions',
+        'schedule': crontab(minute='*/1', hour='9-15'),  # Every minute during market hours
+    },
+    # Update trailing stops every 5 minutes during market hours
+    'update-trailing-stops': {
+        'task': 'stocks.tasks.update_trailing_stops',
+        'schedule': crontab(minute='*/5', hour='9-15'),  # Every 5 minutes during market hours
+    },
+    # Reconcile positions every 5 minutes during market hours
+    'reconcile-positions': {
+        'task': 'stocks.tasks.reconcile_positions',
+        'schedule': crontab(minute='*/5', hour='9-15'),  # Every 5 minutes during market hours
+    },
+    # Check risk limits every 5 minutes during market hours
+    'check-risk-limits': {
+        'task': 'stocks.tasks.check_risk_limits',
+        'schedule': crontab(minute='*/5', hour='9-15'),  # Every 5 minutes during market hours
+    },
+    # Calculate performance metrics at end of trading day (3:30 PM IST = 15:30)
+    'calculate-performance-metrics': {
+        'task': 'stocks.tasks.calculate_performance_metrics',
+        'schedule': crontab(minute=30, hour=15),  # 3:30 PM IST
+    },
+}
 # Channels Configuration
 CHANNEL_LAYERS = {
     "default": {
@@ -171,8 +258,9 @@ CHANNEL_LAYERS = {
         },
     },
 }
-USE_TZ = False
+# USE_TZ is set to True above for Indian timezone support
 #Telegram Bot
 TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHAT_ID = config('TELEGRAM_CHAT_ID')
 TEMPLATES[0]['OPTIONS']['context_processors'].append('coredata.context_processors.coredata_context')
+

@@ -20,15 +20,15 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f'Using API Key: {api_key}'))
     #print(os.environ['ALLOWED_HOSTS'])
-     # breeze = BreezeAPI()
-     # breezeStatus = breeze.get_session_status()
+    breeze = BreezeAPI()
+    breezeStatus = breeze.get_session_status()
     t_date = date_format('2025-07-10')
     print('TEST Using infra utils:',t_date)
-    # if breezeStatus is True:
-    #     print('Breeze active!')
-    # else:
-    # 	print('Breeze Access Error!')
-    # 	exit()
+    if breezeStatus is True:
+        print('Breeze active!')
+    else:
+    	print('Breeze Access Error!')
+    	exit()
 
     #stocks = StockPriceData.objects.all()
     # print('tradestatus: ',trade)

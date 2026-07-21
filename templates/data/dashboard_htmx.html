@@ -18,11 +18,11 @@
             <input type="checkbox" name="today" value="1" /> Today
         </label>
         <label>Status:
-        <select name="status">
+           {% load status_filters %}
+
+        <select name="status-list">
             <option value="">-- All --</option>
-            <option value="8">Above 50MA</option>
-            <option value="7">Below 50MA</option>
-            <option value="1">At 50MA</option>
+            {% status_list 'options' %}
         </select>
     </label>
 
@@ -30,7 +30,7 @@
         <!-- Reset Button -->
     <a href="/data/" title="Reset">Reset</a>
     </form>
-
+    <p>Total Stocks: {{ total_stocks }}</p>
     <div id="stock-table">
         {% include "data/_stock_table.html" %}
     </div>
