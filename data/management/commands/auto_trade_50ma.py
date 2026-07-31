@@ -1,6 +1,7 @@
 """
 Management command to manually trigger 50MA automated trading
 Usage: python manage.py auto_trade_50ma
+Desc: --
 """
 from django.core.management.base import BaseCommand
 from data.engine.order_executor import OrderExecutor

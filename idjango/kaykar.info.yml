@@ -1,5 +1,0 @@
-name: 'Kaykar'
-type: module
-description: 'Custom Module for Kaykar site.'
-core_version_requirement: ^11
-package: Custom

@@ -62,7 +62,7 @@ def update_google_sheet(sheet, stock_list, new_data=''):
     # Update the range with new data; using RAW value input mode.
     sheet.update(range_string, values, value_input_option="RAW")
 
-    return("✅ Stock column updated successfully!")
+    return("✅ Stock data column updated successfully!")
 
 #
 def get_google_sheet_data(spreadsheet_id, sheet_name, api_key):

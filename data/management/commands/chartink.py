@@ -59,7 +59,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS("Starting 50MA Chartink scraper..."))
         
-        file_path = os.path.join(settings.MEDIA_ROOT, "result_1.html")
+        #file_path = os.path.join(settings.MEDIA_ROOT, "result_1.html")
         new_stock_list = []
         driver = None
 
@@ -83,10 +83,10 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR("=" * 60))
                 self.stdout.write(self.style.ERROR("ZERO STOCKS EXTRACTED - STOPPING PROCESS"))
                 self.stdout.write(self.style.ERROR("=" * 60))
-                self.stdout.write(self.style.WARNING("No stocks found in clipboard. Possible reasons:"))
-                self.stdout.write(self.style.WARNING("  1. Chartink didn't copy symbols to clipboard"))
-                self.stdout.write(self.style.WARNING("  2. 'Symbols' option was not clicked correctly"))
-                self.stdout.write(self.style.WARNING("  3. Clipboard was empty or cleared"))
+                self.stdout.write(self.style.WARNING("No stocks found. Possible reasons:"))
+                self.stdout.write(self.style.WARNING("  1. Chartink results table empty / not loaded"))
+                self.stdout.write(self.style.WARNING("  2. Page blocked or selectors outdated"))
+                self.stdout.write(self.style.WARNING("  3. Clipboard fallback failed (normal in Docker)"))
                 self.stdout.write(self.style.WARNING("  4. Parsing failed to extract symbols"))
                 self.stdout.write(self.style.ERROR("Process stopped. Google Sheets upload skipped."))
                 return
@@ -448,20 +448,147 @@ class Command(BaseCommand):
         
         return driver
 
-    def _scrape_chartink(self, driver):
-        """Scrape Chartink screener using copy button - much simpler!"""
-        if pyperclip is None:
-            self.stdout.write(self.style.ERROR(
-                "pyperclip module not found! Install it with: pip install pyperclip"
+    def _extract_symbols_from_results_table(self, driver):
+        """Primary Docker-safe path: read symbols from scan-results-table (no clipboard)."""
+        symbols = []
+        seen = set()
+        wait = WebDriverWait(driver, 45)
+
+        try:
+            wait.until(EC.presence_of_element_located(
+                (By.CSS_SELECTOR, "table.scan-results-table tbody tr")
+            ))
+        except TimeoutException:
+            self.stdout.write(self.style.WARNING(
+                "scan-results-table not ready — page may still be loading or blocked"
             ))
             return []
+
+        # Prefer larger page size so we avoid pagination when possible
+        try:
+            per_page = driver.execute_script("""
+                const labels = [...document.querySelectorAll('button, div, span, select')]
+                  .filter(el => /per\\s*page/i.test(el.textContent || ''));
+                // vue-good-table style: clickable page-size options
+                const candidates = [...document.querySelectorAll('button, li, a, span')]
+                  .filter(el => {
+                    const t = (el.textContent || '').trim();
+                    return t === '50' || t === '40' || t === '30';
+                  });
+                for (const el of candidates) {
+                  if (el.offsetParent !== null) {
+                    el.click();
+                    return el.textContent.trim();
+                  }
+                }
+                return null;
+            """)
+            if per_page:
+                self.stdout.write(f"Set results per page to {per_page}")
+                time.sleep(2)
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f"Could not change per-page size: {e}"))
+
+        max_pages = 20
+        for page in range(1, max_pages + 1):
+            page_symbols = driver.execute_script("""
+                const table = document.querySelector('table.scan-results-table');
+                if (!table) return [];
+                const rows = [...table.querySelectorAll('tbody tr')];
+                const out = [];
+                for (const row of rows) {
+                  const cells = [...row.querySelectorAll('td')];
+                  let sym = '';
+                  // Column layout: Sr | Stock Name | Symbol | close | %_change | volume
+                  if (cells.length >= 3) {
+                    sym = (cells[2].textContent || '').trim();
+                  }
+                  if (!sym) {
+                    const a = row.querySelector('a[href*="symbol="]');
+                    if (a) {
+                      const m = (a.getAttribute('href') || '').match(/symbol=([^&]+)/);
+                      if (m) sym = decodeURIComponent(m[1]);
+                    }
+                  }
+                  if (sym) out.push(sym.toUpperCase());
+                }
+                return out;
+            """) or []
+
+            added = 0
+            for sym in page_symbols:
+                clean = ''.join(c for c in sym.strip().upper() if c.isalnum() or c == '-')
+                if clean and len(clean) <= 20 and clean not in seen:
+                    seen.add(clean)
+                    symbols.append(clean)
+                    added += 1
+
+            self.stdout.write(
+                f"Table page {page}: read {len(page_symbols)} rows, +{added} new "
+                f"(total {len(symbols)})"
+            )
+
+            # Click Next if available and not disabled
+            clicked_next = driver.execute_script("""
+                const buttons = [...document.querySelectorAll('button')];
+                const next = buttons.find(b => {
+                  const t = (b.textContent || '').trim();
+                  return t === 'Next' || t === 'Next >>' || /^next$/i.test(t);
+                });
+                if (!next) return false;
+                if (next.disabled || next.classList.contains('disabled') ||
+                    next.getAttribute('aria-disabled') === 'true' ||
+                    /opacity-40|cursor-not-allowed/.test(next.className || '')) {
+                  return false;
+                }
+                const before = document.querySelector('table.scan-results-table tbody tr td');
+                const beforeText = before ? before.textContent : '';
+                next.click();
+                return beforeText || true;
+            """)
+
+            if not clicked_next:
+                break
+
+            # Wait for first row to change or settle
+            time.sleep(1.5)
+            try:
+                wait.until(EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, "table.scan-results-table tbody tr")
+                ))
+            except TimeoutException:
+                break
+
+            if added == 0 and page > 1:
+                # No new symbols after Next — stop
+                break
+
+        if symbols:
+            self.stdout.write(self.style.SUCCESS(
+                f"Extracted {len(symbols)} symbols from results table"
+            ))
+            self.stdout.write(
+                f"Symbols: {', '.join(symbols[:15])}{'...' if len(symbols) > 15 else ''}"
+            )
+        else:
+            self.stdout.write(self.style.WARNING("Table scrape found 0 symbols"))
+
+        return symbols
+
+    def _scrape_chartink(self, driver):
+        """Scrape Chartink screener — table first (Docker-safe), clipboard optional."""
+        if pyperclip is None:
+            self.stdout.write(self.style.WARNING(
+                "pyperclip not installed — clipboard fallback disabled. "
+                "Table scrape will be used (recommended in Docker)."
+            ))
         
         url = "https://chartink.com/screener/50ma-setup"
         driver.get(url)
         wait = WebDriverWait(driver, 30)
         self.stdout.write(f"Fetching data from {url}")
 
-        # Grant clipboard permissions again after page load (in case CDP didn't work)
+        # Grant clipboard permissions again after page load (optional; table path does not need this)
         try:
             permission_names = [
                 ['clipboardRead', 'clipboardWrite'],
@@ -482,17 +609,27 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(f"Could not re-grant permissions: {str(e)}"))
 
         # Wait for page to fully load - Chartink uses React/JS
-        time.sleep(15)
+        time.sleep(10)
         
         # Take screenshot after page load
+        screenshot_dir = os.path.join(settings.MEDIA_ROOT, "screenshots")
         try:
-            screenshot_dir = os.path.join(settings.MEDIA_ROOT, "screenshots")
             os.makedirs(screenshot_dir, exist_ok=True)
             screenshot_1 = os.path.join(screenshot_dir, "01_page_loaded.png")
             driver.save_screenshot(screenshot_1)
             self.stdout.write(f"Screenshot saved: {screenshot_1}")
         except Exception as e:
             self.stdout.write(self.style.WARNING(f"Could not save screenshot: {str(e)}"))
+
+        # PRIMARY: DOM table (works headless / Docker without clipboard)
+        self.stdout.write("Extracting symbols from scan-results-table (primary method)...")
+        table_stocks = self._extract_symbols_from_results_table(driver)
+        if table_stocks:
+            return table_stocks
+
+        self.stdout.write(self.style.WARNING(
+            "Table extraction returned 0 stocks — falling back to Copy/clipboard methods"
+        ))
         
         new_stock_list = []
         
@@ -969,53 +1106,11 @@ class Command(BaseCommand):
             # Method 6: Fallback - Extract symbols directly from table if clipboard fails
             # This is a reliable backup method that doesn't depend on clipboard
             if not clipboard_content or not clipboard_content.strip():
-                self.stdout.write("Clipboard methods failed. Trying to extract symbols directly from table...")
-                try:
-                    # Find the table with stock data
-                    # Chartink table structure: table with stock symbols in a column
-                    table_rows = driver.find_elements(By.XPATH, "//table//tr[td]")
-                    symbols_list = []
-                    
-                    if table_rows:
-                        self.stdout.write(f"Found {len(table_rows)} table rows")
-                        # Look for the "Symbols" column header to find column index
-                        headers = driver.find_elements(By.XPATH, "//table//th | //table//thead//td")
-                        symbol_col_index = None
-                        
-                        for idx, header in enumerate(headers):
-                            header_text = header.text.strip().lower()
-                            if 'symbol' in header_text:
-                                symbol_col_index = idx
-                                self.stdout.write(f"Found 'Symbols' column at index {symbol_col_index}")
-                                break
-                        
-                        # Extract symbols from table rows
-                        for row in table_rows[1:]:  # Skip header row
-                            try:
-                                cells = row.find_elements(By.TAG_NAME, "td")
-                                if symbol_col_index is not None and len(cells) > symbol_col_index:
-                                    symbol = cells[symbol_col_index].text.strip()
-                                    if symbol and len(symbol) >= 2:  # Valid symbol
-                                        symbols_list.append(symbol)
-                                elif len(cells) >= 2:
-                                    # Try second column if no header found
-                                    symbol = cells[1].text.strip()
-                                    if symbol and len(symbol) >= 2 and symbol.isupper():
-                                        symbols_list.append(symbol)
-                            except:
-                                continue
-                        
-                        if symbols_list:
-                            clipboard_content = '\n'.join(symbols_list)
-                            self.stdout.write(self.style.SUCCESS(f"Extracted {len(symbols_list)} symbols directly from table"))
-                            preview = clipboard_content[:200].replace('\n', '\\n')
-                            self.stdout.write(f"Symbols preview: {preview}...")
-                        else:
-                            self.stdout.write(self.style.WARNING("Could not extract symbols from table"))
-                    else:
-                        self.stdout.write(self.style.WARNING("No table rows found"))
-                except Exception as e:
-                    self.stdout.write(f"Table extraction failed: {str(e)}")
+                self.stdout.write("Clipboard methods failed. Trying table extraction again...")
+                table_fallback = self._extract_symbols_from_results_table(driver)
+                if table_fallback:
+                    return table_fallback
+                self.stdout.write(self.style.WARNING("Could not extract symbols from table"))
             
             # Final check - if we still don't have content, return empty
             if not clipboard_content or not clipboard_content.strip():
@@ -1023,15 +1118,9 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR("COULD NOT RETRIEVE CLIPBOARD CONTENT"))
                 self.stdout.write(self.style.ERROR("=" * 60))
                 self.stdout.write("Possible issues:")
-                self.stdout.write("  1. Clipboard permissions not granted")
-                self.stdout.write("     → Try running with --no-headless and grant permission manually")
-                self.stdout.write("     → Or check Chrome settings for clipboard permissions")
-                self.stdout.write("  2. Chartink didn't copy to clipboard")
-                self.stdout.write("     → Check if 'Symbols' option was clicked correctly")
-                self.stdout.write("  3. System clipboard access denied")
-                self.stdout.write("     → Install pyperclip: pip install pyperclip")
-                self.stdout.write("  4. Browser clipboard API not supported")
-                self.stdout.write("     → Try updating Chrome browser")
+                self.stdout.write("  1. Results table empty / not loaded")
+                self.stdout.write("  2. Clipboard permissions not granted (normal in Docker headless)")
+                self.stdout.write("  3. Chartink UI changed")
                 self.stdout.write("\nSaving final screenshot for debugging...")
                 try:
                     screenshot_6 = os.path.join(screenshot_dir, "06_no_clipboard_content.png")
@@ -1039,7 +1128,7 @@ class Command(BaseCommand):
                     self.stdout.write(f"Screenshot saved: {screenshot_6}")
                 except:
                     pass
-                self.stdout.write(self.style.WARNING("\nTIP: Run with --no-headless to see browser and grant clipboard permission manually"))
+                self.stdout.write(self.style.WARNING("\nTIP: Table scrape is primary — check media/screenshots/01_page_loaded.png"))
                 return new_stock_list
             
             # We have content! Proceed directly to parsing - no more checks

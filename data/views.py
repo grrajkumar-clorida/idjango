@@ -3,7 +3,7 @@ from django.utils import timezone
 from django.conf import settings
 from django.db.models import Q
 from .models import Source, Stocks50MA, StockPriceData
-from .utils import get_google_sheet_data, filter_stock, update_google_sheet  # 👈 import here
+from .utils import get_google_sheet_data, filter_stock, update_google_sheet, place_order
 from django.forms.models import model_to_dict
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -77,6 +77,3 @@ def chartink_dashboard(request):
         "stocks": stocks,
     })
     #return render(request, "dashboard_htmx.html", {"stocks": stocks})
-
-
-def place_order():

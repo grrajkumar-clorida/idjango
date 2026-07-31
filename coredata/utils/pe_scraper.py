@@ -1,54 +1,101 @@
 # utils/pe_scraper.py
 import time
 import os
-#import django
+
+from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from bs4 import BeautifulSoup
-#from infra.models import Tickers
-
+from selenium.webdriver.support.ui import WebDriverWait
 
 '''
-Manual execution python coredata/utils/pe_scraper.py --fetch_nifty_50
+Manual execution (inside container):
+  python coredata/utils/pe_scraper.py
+  python -c "from coredata.utils.pe_scraper import fetch_nifty_pe; print(fetch_nifty_pe())"
 '''
 
-# Setup Django environment
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "idjango.settings")  # Replace with your project
-#django.setup()
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "idirect.settings")
+
+
+def _find_chrome_binary():
+    candidates = [
+        os.environ.get("CHROME_BIN", ""),
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
+    ]
+    for path in candidates:
+        if path and os.path.exists(path):
+            return path
+    return None
+
+
+def _find_chromedriver():
+    candidates = [
+        os.environ.get("CHROMEDRIVER_PATH", ""),
+        "/usr/bin/chromedriver",
+        "/usr/lib/chromium/chromedriver",
+    ]
+    for path in candidates:
+        if path and os.path.exists(path):
+            return path
+    return None
+
+
+def _chrome_options():
+    options = Options()
+    binary = _find_chrome_binary()
+    if binary:
+        options.binary_location = binary
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=1920,1080")
+    return options
+
+
+def _chrome_driver():
+    driver_path = _find_chromedriver()
+    options = _chrome_options()
+    if driver_path:
+        return webdriver.Chrome(service=Service(driver_path), options=options)
+    return webdriver.Chrome(options=options)
 
 def fetch_nifty_pe():
-    options = Options()
-    options.headless = True
-    driver = webdriver.Chrome(options=options)
+    """Scrape Nifty PE via Chromium. Returns None if browser is unavailable."""
+    driver = None
+    try:
+        driver = _chrome_driver()
+        driver.get("https://www.screener.in/company/NIFTY/")
+        time.sleep(5)
 
-    driver.get("https://www.screener.in/company/NIFTY/") #https://www.niftyindices.com/reports/historical-data
-    time.sleep(5)  # Wait for JS to load
-
-    soup = BeautifulSoup(driver.page_source, "html.parser")
-    pe_value = 0
-    # Update this selector based on the actual page
-    for li in soup.select("ul#top-ratios li"):
-        label = li.find("span", class_="name")
-        value = li.find("span", class_="number")
-        if label and "P/E" in label.text:
-            pe_value = float(value.text.strip())
-
-    
-    driver.quit()
-
-    return pe_value
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        pe_value = None
+        for li in soup.select("ul#top-ratios li"):
+            label = li.find("span", class_="name")
+            value = li.find("span", class_="number")
+            if label and value and "P/E" in label.text:
+                pe_value = float(value.text.strip())
+                break
+        return pe_value
+    except Exception:
+        return None
+    finally:
+        if driver is not None:
+            try:
+                driver.quit()
+            except Exception:
+                pass
 
 
 def fetch_screener_table(path="1", name='50'):
     print(f'Fetching NIFTY {name} stocks...')
 
-    # Setup headless Chrome browser
-    options = Options()
-    options.add_argument("--headless")
-    driver = webdriver.Chrome(options=options)
+    driver = _chrome_driver()
     path = "https://www.screener.in/company/NIFTY/?sort=name&order=asc"
     try:
         url = path #"https://www.screener.in/company/NIFTY/?sort=name&order=asc"
@@ -94,9 +141,7 @@ def fetch_screener_table(path="1", name='50'):
 
 
 def fetch_nifty_tickers(path="1", name='50'):
-    options = Options()
-    options.add_argument("--headless")
-    driver = webdriver.Chrome(options=options)
+    driver = _chrome_driver()
     path = "https://www.screener.in/company/NIFTY/?sort=name&order=asc"
     url = path #"https://www.screener.in/company/NIFTY/?sort=name&order=asc"
     soup = BeautifulSoup(driver.page_source, "html.parser")

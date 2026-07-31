@@ -21,24 +21,26 @@ class BreezeAPI:
         self.sio = None   # socket client
 
         try:
+            from coredata.utils.breeze_session import get_breeze_session
+
+            session_token = get_breeze_session()
+            logging.info(f"breeze_session : {session_token}")
+            logging.info(f"Breeze Secret Key : {settings.BREEZE_SECRET_KEY}")
+
+            if not session_token:
+                raise ValueError(
+                    "Breeze session missing. Login via ICICI API user home "
+                    "so it redirects to this app with ?apisession=<session>"
+                )
+
             dd = self.api.generate_session(
                 api_secret=settings.BREEZE_SECRET_KEY,
-                session_token=settings.BREEZE_SESSION
+                session_token=session_token,
             )
             logging.info("Breeze API session established successfully :).")
             global api_status
             api_status = True
             self.api_status = True
-            #print("API Status: ", api_status)
-
-            # prepare socket auth from session token
-            # self.session_key = settings.BREEZE_SESSION
-            # #print(settings.BREEZE_SESSION, "sss")
-            # self.user_id, self.session_token = base64.b64decode(
-            #     self.session_key.encode("ascii")
-            # ).decode("ascii").split(":")
-
-            
         except Exception as e:
             logging.error(f"Sorry Failed to authenticate with Breeze API On : {e}")
             self.api_status = False

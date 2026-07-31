@@ -2,5 +2,6 @@ from django.apps import AppConfig
 
 
 class CoredataConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'coredata'
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "coredata"
+    verbose_name = "Core Data / Settings"
