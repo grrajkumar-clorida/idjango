@@ -1,0 +1,180 @@
+{% extends "stocks/admin_base.html" %}
+
+{% block title %}Strategy Details - {{ strategy.name }}{% endblock %}
+
+{% block page_title %}{{ strategy.name }}{% endblock %}
+{% block page_subtitle %}Strategy Details & Performance{% endblock %}
+
+{% block content %}
+<!-- Strategy Info Card -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                    <h4>{{ strategy.name }}</h4>
+                    <p class="text-muted mb-0">{{ strategy.description|default:"No description" }}</p>
+                </div>
+                <div>
+                    <span class="badge badge-{% if strategy.enabled %}success{% else %}secondary{% endif %} badge-status">
+                        {% if strategy.enabled %}Enabled{% else %}Disabled{% endif %}
+                    </span>
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-3">
+                    <strong>Code:</strong> <code>{{ strategy.code }}</code>
+                </div>
+                <div class="col-md-3">
+                    <strong>Created:</strong> {{ strategy.created_at|date:"Y-m-d H:i" }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Updated:</strong> {{ strategy.updated_at|date:"Y-m-d H:i" }}
+                </div>
+                <div class="col-md-3">
+                    {% if strategy.enabled %}
+                        <form method="post" action="{% url 'admin_strategy_disable' strategy.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-danger">Disable</button>
+                        </form>
+                    {% else %}
+                        <form method="post" action="{% url 'admin_strategy_enable' strategy.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-success">Enable</button>
+                        </form>
+                    {% endif %}
+                    <a href="{% url 'admin_strategies' %}" class="btn btn-sm btn-secondary">Back</a>
+                </div>
+            </div>
+            
+            {% if strategy.parameters %}
+            <div class="mt-3">
+                <strong>Parameters:</strong>
+                <pre class="bg-light p-2 rounded"><code>{{ strategy.parameters|safe }}</code></pre>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="label">Total Signals</div>
+            <div class="value text-primary">{{ total_signals }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="label">Executed Signals</div>
+            <div class="value text-success">{{ executed_signals }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="label">Pending Signals</div>
+            <div class="value text-warning">{{ pending_signals }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="label">Win Rate</div>
+            <div class="value text-info">{{ performance.win_rate|default:"0.00" }}%</div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Metrics -->
+{% if performance and 'error' not in performance %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="stat-card">
+            <h5 class="mb-3"><i class="fas fa-chart-bar mr-2"></i>Performance Metrics (Last 30 Days)</h5>
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Total P/L:</strong>
+                    <span class="{% if performance.total_pl >= 0 %}text-success{% else %}text-danger{% endif %}">
+                        ₹{{ performance.total_pl|default:"0.00" }}
+                    </span>
+                </div>
+                <div class="col-md-3">
+                    <strong>Total Trades:</strong> {{ performance.total_trades|default:"0" }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Profit Factor:</strong> {{ performance.profit_factor|default:"0.00" }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Max Drawdown:</strong> ₹{{ performance.max_drawdown|default:"0.00" }}
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-3">
+                    <strong>Winning Trades:</strong> {{ performance.winning_trades|default:"0" }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Losing Trades:</strong> {{ performance.losing_trades|default:"0" }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Avg Profit:</strong> ₹{{ performance.avg_profit|default:"0.00" }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Avg Loss:</strong> ₹{{ performance.avg_loss|default:"0.00" }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Recent Signals -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="stat-card">
+            <h5 class="mb-3"><i class="fas fa-list mr-2"></i>Recent Signals</h5>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Stock</th>
+                            <th>Signal</th>
+                            <th>Strength</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for signal in recent_signals %}
+                        <tr>
+                            <td><strong>{{ signal.stock_code }}</strong></td>
+                            <td>
+                                <span class="badge badge-{% if signal.signal_type == 'BUY' %}success{% elif signal.signal_type == 'SELL' %}danger{% else %}secondary{% endif %}">
+                                    {{ signal.signal_type }}
+                                </span>
+                            </td>
+                            <td>{{ signal.strength|floatformat:2 }}</td>
+                            <td>₹{{ signal.price|default:"N/A"|floatformat:2 }}</td>
+                            <td>
+                                {% if signal.executed %}
+                                    <span class="badge badge-success">Executed</span>
+                                {% else %}
+                                    <span class="badge badge-warning">Pending</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ signal.timestamp|date:"Y-m-d H:i:s" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted">No signals found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

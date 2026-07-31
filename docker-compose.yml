@@ -1,0 +1,122 @@
+# Multi-app safe networking:
+# - Do NOT publish host ports. NPM reaches apps by container name.
+# - This app uses internal APP_PORT=8008 (change in idirect/.env if needed).
+# - NPM Proxy Host: idjango.rbynex.in -> http://idjango:8008
+
+services:
+  idjango-mysql:
+    image: mysql:8.0
+    container_name: idjango-mysql
+    restart: unless-stopped
+    env_file:
+      - ./idirect/.env
+    environment:
+      MYSQL_DATABASE: ${DATABASE_NAME:?Set DATABASE_NAME in idirect/.env}
+      MYSQL_USER: ${DATABASE_USER:?Set DATABASE_USER in idirect/.env}
+      MYSQL_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD in idirect/.env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in idirect/.env}
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    networks:
+      - npm-network
+    command: ["--default-authentication-plugin=mysql_native_password", "--character-set-server=utf8mb4"]
+    healthcheck:
+      # Uses password from compose env interpolation (idirect/.env)
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+
+  idjango-redis:
+    image: redis:7-alpine
+    container_name: idjango-redis
+    restart: unless-stopped
+    networks:
+      - npm-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  idjango:
+    build: .
+    container_name: idjango
+    restart: unless-stopped
+    # Chromium needs shared memory for Selenium
+    shm_size: "512mb"
+    # Bind port from idirect/.env APP_PORT at runtime (default 8008).
+    # Not published on the VPS host — NPM uses http://idjango:8008
+    command:
+      - /bin/sh
+      - -c
+      - exec gunicorn idirect.wsgi:application --bind 0.0.0.0:$${APP_PORT:-8008} --workers 3 --chdir /app
+    env_file:
+      - ./idirect/.env
+    environment:
+      DJANGO_SETTINGS_MODULE: idirect.settings
+      PYTHONPATH: /app
+      APP_PORT: "8008"
+      CHROME_BIN: /usr/bin/chromium
+      CHROMEDRIVER_PATH: /usr/bin/chromedriver
+    expose:
+      - "8008"
+    volumes:
+      - ./:/app
+      - ./media:/app/media
+      - ./staticfiles:/app/staticfiles
+    depends_on:
+      idjango-mysql:
+        condition: service_healthy
+      idjango-redis:
+        condition: service_healthy
+    networks:
+      - npm-network
+
+  idjango-celery:
+    build: .
+    container_name: idjango-celery
+    restart: unless-stopped
+    shm_size: "512mb"
+    command: celery -A idirect worker -l info
+    env_file:
+      - ./idirect/.env
+    environment:
+      DJANGO_SETTINGS_MODULE: idirect.settings
+      PYTHONPATH: /app
+      CHROME_BIN: /usr/bin/chromium
+      CHROMEDRIVER_PATH: /usr/bin/chromedriver
+    volumes:
+      - ./:/app
+    depends_on:
+      idjango-mysql:
+        condition: service_healthy
+      idjango-redis:
+        condition: service_healthy
+    networks:
+      - npm-network
+
+  idjango-celery-beat:
+    build: .
+    container_name: idjango-celery-beat
+    restart: unless-stopped
+    command: celery -A idirect beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    env_file:
+      - ./idirect/.env
+    environment:
+      DJANGO_SETTINGS_MODULE: idirect.settings
+      PYTHONPATH: /app
+    volumes:
+      - ./:/app
+    depends_on:
+      idjango-mysql:
+        condition: service_healthy
+      idjango-redis:
+        condition: service_healthy
+    networks:
+      - npm-network
+
+networks:
+  npm-network:
+    external: true

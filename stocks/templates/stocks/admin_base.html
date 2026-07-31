@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>{% block title %}Trading Dashboard{% endblock %}</title>
+    
+    <!-- Bootstrap 4.5.2 -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <!-- Chart.js 3.x -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    
+    <!-- Custom Styles -->
+    <style>
+        :root {
+            --sidebar-width: 250px;
+            --header-height: 60px;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f5f5;
+        }
+        
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: var(--sidebar-width);
+            background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding-top: var(--header-height);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.8);
+            padding: 12px 20px;
+            border-left: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-left-color: #3498db;
+            color: white;
+        }
+        
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            border-radius: 8px;
+            contain: layout style paint; /* Optimize rendering */
+        }
+        
+        .nifty-pe-display {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            transition: transform 0.2s, box-shadow 0.2s;
+            contain: layout style paint; /* Optimize rendering */
+            will-change: transform; /* Hint browser about upcoming changes */
+        }
+        
+        .nifty-pe-display:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+            contain: layout style paint; /* Optimize rendering */
+            will-change: transform; /* Hint browser about upcoming changes */
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .stat-card .icon {
+            font-size: 2.5rem;
+            opacity: 0.8;
+        }
+        
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .stat-card .label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .table-responsive {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .badge-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+        
+        .btn-action {
+            padding: 5px 15px;
+            font-size: 0.85rem;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="p-3 text-center border-bottom border-secondary">
+            <h4 class="mb-0"><i class="fas fa-chart-line"></i> Trading Dashboard</h4>
+        </div>
+        <ul class="nav flex-column mt-3">
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}" 
+                   href="{% url 'admin_dashboard' %}">
+                    <i class="fas fa-home mr-2"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'admin_strategies' %}active{% endif %}" 
+                   href="{% url 'admin_strategies' %}">
+                    <i class="fas fa-cogs mr-2"></i> Strategies
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'admin_positions' %}active{% endif %}" 
+                   href="{% url 'admin_positions' %}">
+                    <i class="fas fa-briefcase mr-2"></i> Positions
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'admin_performance' %}active{% endif %}" 
+                   href="{% url 'admin_performance' %}">
+                    <i class="fas fa-chart-bar mr-2"></i> Performance
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'admin_risk' %}active{% endif %}" 
+                   href="{% url 'admin_risk' %}">
+                    <i class="fas fa-shield-alt mr-2"></i> Risk Management
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'admin_reports' %}active{% endif %}" 
+                   href="{% url 'admin_reports' %}">
+                    <i class="fas fa-file-alt mr-2"></i> Reports
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'stock_dashboard' %}">
+                    <i class="fas fa-chart-line mr-2"></i> Stock Charts
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'admin_sitemap' %}active{% endif %}" 
+                   href="{% url 'admin_sitemap' %}">
+                    <i class="fas fa-sitemap mr-2"></i> Sitemap
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin/" target="_blank">
+                    <i class="fas fa-cog mr-2"></i> Django Admin
+                </a>
+            </li>
+        </ul>
+    </nav>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="mb-0">{% block page_title %}Dashboard{% endblock %}</h3>
+                    <small class="text-muted">{% block page_subtitle %}Trading System Management{% endblock %}</small>
+                </div>
+                <div class="d-flex align-items-center">
+                    <!-- Nifty PE Display -->
+                    {% if nifty_pe %}
+                    <div class="nifty-pe-display mr-4 p-3" style="background: {% if nifty_pe.0 > 32 %}#dc3545{% elif nifty_pe.0 > 25 %}#ffc107{% elif nifty_pe.0 > 20 %}#17a2b8{% else %}#28a745{% endif %}; border-radius: 8px; min-width: 200px;">
+                        <div class="text-white text-center" 
+                             data-toggle="tooltip" 
+                             data-placement="bottom" 
+                             title="{{ nifty_pe.1 }}">
+                            <div style="font-size: 0.85rem; font-weight: 500; opacity: 0.9; margin-bottom: 4px;">
+                                <i class="fas fa-chart-line mr-1"></i>Nifty PE
+                            </div>
+                            <div style="font-size: 1.8rem; font-weight: bold; line-height: 1.2;">
+                                {{ nifty_pe.0|floatformat:2 }}
+                            </div>
+                            <div style="font-size: 0.75rem; opacity: 0.85; margin-top: 4px; line-height: 1.2;" class="d-none d-md-block">
+                                {{ nifty_pe.1 }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <span class="badge badge-success mr-2">
+                        <i class="fas fa-circle"></i> System Online
+                    </span>
+                    <span class="text-muted" id="current-time" style="will-change: contents;">Time</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Content -->
+        {% block content %}{% endblock %}
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    
+    <!-- Initialize Bootstrap tooltips -->
+    <script>
+        $(function () {
+            $('[data-toggle="tooltip"]').tooltip();
+        });
+    </script>
+    
+    <!-- Update Time -->
+    <script>
+        (function() {
+            const timeElement = document.getElementById('current-time');
+            if (!timeElement) return;
+            
+            let cachedTime = '';
+            
+            function updateTime() {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString();
+                
+                // Only update DOM if time actually changed (avoids unnecessary reflows)
+                if (timeString !== cachedTime) {
+                    // Batch DOM updates using requestAnimationFrame
+                    requestAnimationFrame(function() {
+                        if (timeElement && timeElement.textContent !== timeString) {
+                            timeElement.textContent = timeString;
+                        }
+                    });
+                    cachedTime = timeString;
+                }
+            }
+            
+            // Update immediately
+            updateTime();
+            
+            // Then update every second
+            setInterval(updateTime, 1000);
+        })();
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

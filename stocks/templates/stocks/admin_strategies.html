@@ -1,0 +1,71 @@
+{% extends "stocks/admin_base.html" %}
+
+{% block title %}Strategies Management{% endblock %}
+
+{% block page_title %}Strategies Management{% endblock %}
+{% block page_subtitle %}Enable, disable, and monitor trading strategies{% endblock %}
+
+{% block content %}
+<!-- Strategy Filters -->
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <button class="btn btn-sm btn-outline-primary" 
+                            hx-get="{% url 'admin_strategies' %}?status=all"
+                            hx-target="#strategies-table"
+                            hx-swap="innerHTML">
+                        All
+                    </button>
+                    <button class="btn btn-sm btn-outline-success" 
+                            hx-get="{% url 'admin_strategies' %}?status=enabled"
+                            hx-target="#strategies-table"
+                            hx-swap="innerHTML">
+                        Enabled
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" 
+                            hx-get="{% url 'admin_strategies' %}?status=disabled"
+                            hx-target="#strategies-table"
+                            hx-swap="innerHTML">
+                        Disabled
+                    </button>
+                </div>
+                <div>
+                    <a href="{% url 'admin_strategy_register' %}" class="btn btn-primary">
+                        <i class="fas fa-plus mr-2"></i>Register New Strategy
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Strategies Table -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="table-responsive" id="strategies-table"
+             hx-get="{% url 'admin_strategies_table' %}"
+             hx-trigger="load, every 10s"
+             hx-swap="innerHTML">
+            <div class="text-center py-5">
+                <div class="spinner-border" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Handle strategy enable/disable
+    document.body.addEventListener('htmx:afterSwap', function(event) {
+        if (event.detail.target.id === 'strategies-table') {
+            // Re-attach event listeners if needed
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,13 @@
+.git/
+__pycache__/
+*.pyc
+.env
+idirect/.env
+media/
+staticfiles/
+data/mysql/
+venv/
+my_env/
+_tips/
+*.xlsx
+idjango/

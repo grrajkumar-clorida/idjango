@@ -1,0 +1,99 @@
+{% extends "stocks/admin_base.html" %}
+
+{% block title %}Risk Management{% endblock %}
+
+{% block page_title %}Risk Management{% endblock %}
+{% block page_subtitle %}Monitor exposure and manage risk limits{% endblock %}
+
+{% block content %}
+<!-- Current Exposure -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="stat-card">
+            <h5 class="mb-3"><i class="fas fa-chart-pie mr-2"></i>Current Exposure</h5>
+            <div class="mb-3">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Total Exposure:</span>
+                    <strong>₹{{ exposure_data.total_exposure|default:0|floatformat:2 }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Exposure %:</span>
+                    <strong class="{% if exposure_data.exposure_percent|default:0 > risk_limits.max_portfolio_exposure %}text-danger{% else %}text-success{% endif %}">
+                        {{ exposure_data.exposure_percent|default:0|floatformat:2 }}%
+                    </strong>
+                </div>
+                <div class="progress mb-2" style="height: 25px;">
+                    <div class="progress-bar {% if exposure_data.exposure_percent|default:0 > risk_limits.max_portfolio_exposure %}bg-danger{% else %}bg-success{% endif %}" 
+                         role="progressbar" 
+                         style="width: {{ exposure_data.exposure_percent|default:0 }}%"
+                         aria-valuenow="{{ exposure_data.exposure_percent|default:0 }}" 
+                         aria-valuemin="0" 
+                         aria-valuemax="100">
+                        {{ exposure_data.exposure_percent|default:0|floatformat:1 }}%
+                    </div>
+                </div>
+                <small class="text-muted">Limit: {{ risk_limits.max_portfolio_exposure }}%</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="stat-card">
+            <h5 class="mb-3"><i class="fas fa-shield-alt mr-2"></i>Risk Limits</h5>
+            <form method="post" action="{% url 'admin_risk_update' %}">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label>Max Position Size</label>
+                    <input type="number" class="form-control" name="max_position_size" 
+                           value="{{ risk_limits.max_position_size }}" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Max Portfolio Exposure (%)</label>
+                    <input type="number" class="form-control" name="max_portfolio_exposure" 
+                           value="{{ risk_limits.max_portfolio_exposure }}" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>Max Daily Loss</label>
+                    <input type="number" class="form-control" name="max_daily_loss" 
+                           value="{{ risk_limits.max_daily_loss }}" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Max Drawdown (%)</label>
+                    <input type="number" class="form-control" name="max_drawdown" 
+                           value="{{ risk_limits.max_drawdown }}" step="0.1">
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save mr-2"></i>Update Limits
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Risk Alerts -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="stat-card">
+            <h5 class="mb-3"><i class="fas fa-exclamation-triangle mr-2"></i>Risk Alerts</h5>
+            <div id="risk-alerts"
+                 hx-get="{% url 'admin_risk_alerts' %}"
+                 hx-trigger="load, every 10s"
+                 hx-swap="innerHTML">
+                <div class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-refresh risk alerts
+    // Handled by HTMX hx-trigger="every 10s"
+</script>
+{% endblock %}

@@ -1,0 +1,309 @@
+{% extends "stocks/admin_base.html" %}
+
+{% block title %}Reports - Admin Dashboard{% endblock %}
+
+{% block page_title %}Trading Reports{% endblock %}
+{% block page_subtitle %}Daily, weekly, and monthly performance reports{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Report Filters</h5>
+            </div>
+            
+            <form method="GET" action="{% url 'admin_reports' %}" class="row">
+                <div class="col-md-3">
+                    <label>Report Type</label>
+                    <select name="type" class="form-control" onchange="this.form.submit()">
+                        <option value="daily" {% if report_type == 'daily' %}selected{% endif %}>Daily</option>
+                        <option value="weekly" {% if report_type == 'weekly' %}selected{% endif %}>Weekly</option>
+                        <option value="monthly" {% if report_type == 'monthly' %}selected{% endif %}>Monthly</option>
+                    </select>
+                </div>
+                
+                {% if report_type == 'daily' %}
+                <div class="col-md-3">
+                    <label>Date</label>
+                    <input type="date" name="date" class="form-control" 
+                           value="{% if selected_date %}{{ selected_date|date:'Y-m-d' }}{% endif %}" 
+                           onchange="this.form.submit()">
+                </div>
+                {% elif report_type == 'weekly' %}
+                <div class="col-md-3">
+                    <label>Week Start (Monday)</label>
+                    <input type="date" name="week_start" class="form-control" 
+                           value="{% if week_start %}{{ week_start|date:'Y-m-d' }}{% endif %}" 
+                           onchange="this.form.submit()">
+                </div>
+                {% elif report_type == 'monthly' %}
+                <div class="col-md-2">
+                    <label>Year</label>
+                    <input type="number" name="year" class="form-control" 
+                           value="{{ selected_year }}" min="2020" max="2030" 
+                           onchange="this.form.submit()">
+                </div>
+                <div class="col-md-2">
+                    <label>Month</label>
+                    <select name="month" class="form-control" onchange="this.form.submit()">
+                        <option value="1" {% if selected_month == 1 %}selected{% endif %}>January</option>
+                        <option value="2" {% if selected_month == 2 %}selected{% endif %}>February</option>
+                        <option value="3" {% if selected_month == 3 %}selected{% endif %}>March</option>
+                        <option value="4" {% if selected_month == 4 %}selected{% endif %}>April</option>
+                        <option value="5" {% if selected_month == 5 %}selected{% endif %}>May</option>
+                        <option value="6" {% if selected_month == 6 %}selected{% endif %}>June</option>
+                        <option value="7" {% if selected_month == 7 %}selected{% endif %}>July</option>
+                        <option value="8" {% if selected_month == 8 %}selected{% endif %}>August</option>
+                        <option value="9" {% if selected_month == 9 %}selected{% endif %}>September</option>
+                        <option value="10" {% if selected_month == 10 %}selected{% endif %}>October</option>
+                        <option value="11" {% if selected_month == 11 %}selected{% endif %}>November</option>
+                        <option value="12" {% if selected_month == 12 %}selected{% endif %}>December</option>
+                    </select>
+                </div>
+                {% endif %}
+                
+                <div class="col-md-3">
+                    <label>Strategy</label>
+                    <select name="strategy" class="form-control" onchange="this.form.submit()">
+                        <option value="">All Strategies</option>
+                        {% for strategy in strategies %}
+                        <option value="{{ strategy.id }}" {% if selected_strategy == strategy.id %}selected{% endif %}>
+                            {{ strategy.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% if report %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="stat-card">
+            <h5 class="mb-3">
+                {% if report_type == 'daily' %}
+                    Daily Report - {{ report.date|date:"F d, Y" }}
+                {% elif report_type == 'weekly' %}
+                    Weekly Report - {{ report.week_start|date:"M d" }} to {{ report.week_end|date:"M d, Y" }}
+                {% elif report_type == 'monthly' %}
+                    Monthly Report - {{ report.month|date:"F" }} {{ report.year }}
+                {% endif %}
+            </h5>
+            
+            <!-- Summary Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stat-card bg-primary text-white">
+                        <h6>Total Trades</h6>
+                        <h3>{{ report.summary.total_trades }}</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card {% if report.summary.total_pnl >= 0 %}bg-success{% else %}bg-danger{% endif %} text-white">
+                        <h6>Total P/L</h6>
+                        <h3>₹{{ report.summary.total_pnl|floatformat:2 }}</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card bg-info text-white">
+                        <h6>Win Rate</h6>
+                        <h3>{{ report.summary.win_rate|floatformat:1 }}%</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card bg-warning text-white">
+                        <h6>Profit Factor</h6>
+                        <h3>{{ report.summary.profit_factor|floatformat:2 }}</h3>
+                    </div>
+                </div>
+            </div>
+            
+            {% if report_type == 'daily' %}
+            <!-- Daily Report Details -->
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Strategy Breakdown</h6>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Strategy</th>
+                                <th>Trades</th>
+                                <th>P/L</th>
+                                <th>Win Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for strategy_name, data in report.strategy_breakdown.items %}
+                            <tr>
+                                <td>{{ strategy_name }}</td>
+                                <td>{{ data.trades }}</td>
+                                <td class="{% if data.pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                    ₹{{ data.pnl|floatformat:2 }}
+                                </td>
+                                <td>{{ data.win_rate|floatformat:1 }}%</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center">No trades</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="col-md-6">
+                    <h6>Stock Breakdown</h6>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Stock</th>
+                                <th>Trades</th>
+                                <th>P/L</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stock_code, data in report.stock_breakdown.items %}
+                            <tr>
+                                <td>{{ stock_code }}</td>
+                                <td>{{ data.trades }}</td>
+                                <td class="{% if data.pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                    ₹{{ data.pnl|floatformat:2 }}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-center">No trades</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            {% if report.signals %}
+            <div class="mt-3">
+                <h6>Signals</h6>
+                <p>Total: {{ report.signals.total }} | Executed: {{ report.signals.executed }} 
+                   ({{ report.signals.execution_rate|floatformat:1 }}%)</p>
+            </div>
+            {% endif %}
+            
+            {% elif report_type == 'weekly' %}
+            <!-- Weekly Report Details -->
+            <div class="row">
+                <div class="col-md-12">
+                    <h6>Daily Breakdown</h6>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Trades</th>
+                                <th>P/L</th>
+                                <th>Win Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for daily in report.daily_reports %}
+                            <tr>
+                                <td>{{ daily.date|date:"M d, Y" }}</td>
+                                <td>{{ daily.summary.total_trades }}</td>
+                                <td class="{% if daily.summary.total_pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                    ₹{{ daily.summary.total_pnl|floatformat:2 }}
+                                </td>
+                                <td>{{ daily.summary.win_rate|floatformat:1 }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            {% if report.performance_metrics %}
+            <div class="mt-3">
+                <h6>Performance Metrics</h6>
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Sharpe Ratio:</strong> {{ report.performance_metrics.sharpe_ratio|default:"N/A" }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Max Drawdown:</strong> {{ report.performance_metrics.max_drawdown.max_drawdown_percent|floatformat:2 }}%
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Avg Trade:</strong> ₹{{ report.performance_metrics.average_trade.avg_pnl|floatformat:2 }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Total P/L:</strong> ₹{{ report.performance_metrics.total_pnl|floatformat:2 }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% elif report_type == 'monthly' %}
+            <!-- Monthly Report Details -->
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Best & Worst Days</h6>
+                    <table class="table table-sm">
+                        <tr>
+                            <th>Best Day:</th>
+                            <td>{{ report.best_day.date|date:"M d, Y" }}</td>
+                            <td class="text-success">₹{{ report.best_day.pnl|floatformat:2 }}</td>
+                        </tr>
+                        <tr>
+                            <th>Worst Day:</th>
+                            <td>{{ report.worst_day.date|date:"M d, Y" }}</td>
+                            <td class="text-danger">₹{{ report.worst_day.pnl|floatformat:2 }}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="col-md-6">
+                    <h6>Summary</h6>
+                    <table class="table table-sm">
+                        <tr>
+                            <th>Total Trades:</th>
+                            <td>{{ report.summary.total_trades }}</td>
+                        </tr>
+                        <tr>
+                            <th>Total P/L:</th>
+                            <td class="{% if report.summary.total_pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                ₹{{ report.summary.total_pnl|floatformat:2 }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Avg Daily Trades:</th>
+                            <td>{{ report.summary.avg_daily_trades|floatformat:1 }}</td>
+                        </tr>
+                        <tr>
+                            <th>Avg Daily P/L:</th>
+                            <td>₹{{ report.summary.avg_daily_pnl|floatformat:2 }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            
+            {% if report.performance_metrics %}
+            <div class="mt-3">
+                <h6>Performance Metrics</h6>
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Win Rate:</strong> {{ report.performance_metrics.win_rate.win_rate|floatformat:1 }}%
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Profit Factor:</strong> {{ report.performance_metrics.profit_factor|floatformat:2 }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Sharpe Ratio:</strong> {{ report.performance_metrics.sharpe_ratio|default:"N/A" }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Max Drawdown:</strong> {{ report.performance_metrics.max_drawdown.max_drawdown_percent|floatformat:2 }}%
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

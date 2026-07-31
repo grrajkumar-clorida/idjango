@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+my_env/
+.env
+idirect/.env
+media/
+staticfiles/
+data/mysql/
+*.xlsx
+.DS_Store

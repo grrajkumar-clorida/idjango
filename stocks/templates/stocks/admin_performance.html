@@ -1,0 +1,121 @@
+{% extends "stocks/admin_base.html" %}
+
+{% block title %}Performance Tracking{% endblock %}
+
+{% block page_title %}Performance Analytics{% endblock %}
+{% block page_subtitle %}Track trading performance and strategy metrics{% endblock %}
+
+{% block content %}
+<!-- Time Period Filter -->
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="stat-card">
+            <div class="btn-group" role="group">
+                <button class="btn btn-sm btn-outline-primary" 
+                        onclick="loadPerformance(7)">7 Days</button>
+                <button class="btn btn-sm btn-outline-primary" 
+                        onclick="loadPerformance(30)">30 Days</button>
+                <button class="btn btn-sm btn-outline-primary" 
+                        onclick="loadPerformance(90)">90 Days</button>
+                <button class="btn btn-sm btn-outline-primary" 
+                        onclick="loadPerformance(365)">1 Year</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Chart -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="stat-card">
+            <h5 class="mb-3"><i class="fas fa-chart-line mr-2"></i>Daily P/L Performance</h5>
+            <canvas id="performanceChart" height="100"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Strategy Performance Table -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Strategy</th>
+                        <th>Total P/L</th>
+                        <th>Win Rate</th>
+                        <th>Total Trades</th>
+                        <th>Avg P/L per Trade</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for perf in strategy_performance %}
+                    <tr>
+                        <td><strong>{{ perf.name }}</strong></td>
+                        <td class="{% if perf.total_pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            ₹{{ perf.total_pnl|floatformat:2 }}
+                        </td>
+                        <td>{{ perf.win_rate|floatformat:2 }}%</td>
+                        <td>{{ perf.total_trades }}</td>
+                        <td>₹{{ perf.avg_pnl|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">No performance data available</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Performance Chart
+    const ctx = document.getElementById('performanceChart').getContext('2d');
+    const performanceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ dates|safe }},
+            datasets: [{
+                label: 'Daily P/L',
+                data: {{ pnl_values|safe }},
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    ticks: {
+                        callback: function(value) {
+                            return '₹' + value.toFixed(2);
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'P/L: ₹' + context.parsed.y.toFixed(2);
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    function loadPerformance(days) {
+        window.location.href = '{% url "admin_performance" %}?days=' + days;
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,240 @@
+{% extends "stocks/admin_base.html" %}
+
+{% block title %}Trading Dashboard - Overview{% endblock %}
+
+{% block page_title %}Dashboard Overview{% endblock %}
+{% block page_subtitle %}System Status & Quick Stats{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Optimize canvas rendering for Chart.js */
+    canvas {
+        contain: layout style paint;
+    }
+    
+    /* Optimize stat cards that contain charts */
+    .stat-card canvas {
+        max-width: 100%;
+        height: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Quick Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="label">Active Strategies</div>
+                    <div class="value text-primary" id="active-strategies">{{ active_strategies }}</div>
+                </div>
+                <div class="icon text-primary">
+                    <i class="fas fa-cogs"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="label">Open Positions</div>
+                    <div class="value text-info" id="open-positions">{{ open_positions }}</div>
+                </div>
+                <div class="icon text-info">
+                    <i class="fas fa-briefcase"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="label">Today's P/L</div>
+                    <div class="value {% if today_pnl >= 0 %}text-success{% else %}text-danger{% endif %}" id="today-pnl">
+                        ₹{{ today_pnl|floatformat:2 }}
+                    </div>
+                </div>
+                <div class="icon {% if today_pnl >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    <i class="fas fa-rupee-sign"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="label">Total Exposure</div>
+                    <div class="value text-warning" id="total-exposure">₹{{ total_exposure|floatformat:2 }}</div>
+                </div>
+                <div class="icon text-warning">
+                    <i class="fas fa-chart-pie"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="stat-card">
+            <h5 class="mb-3"><i class="fas fa-chart-line mr-2"></i>Performance (Last 7 Days)</h5>
+            <canvas id="performanceChart" height="200"></canvas>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="stat-card">
+            <h5 class="mb-3"><i class="fas fa-chart-pie mr-2"></i>Strategy Distribution</h5>
+            <canvas id="strategyChart" height="200"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="stat-card">
+            <h5 class="mb-3"><i class="fas fa-clock mr-2"></i>Recent Signals</h5>
+            <div id="recent-signals" 
+                 hx-get="{% url 'admin_recent_signals' %}" 
+                 hx-trigger="load, every 10s"
+                 hx-swap="innerHTML">
+                <div class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="stat-card">
+            <h5 class="mb-3"><i class="fas fa-exclamation-triangle mr-2"></i>System Alerts</h5>
+            <div id="system-alerts" 
+                 hx-get="{% url 'admin_system_alerts' %}" 
+                 hx-trigger="load, every 15s"
+                 hx-swap="innerHTML">
+                <div class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Performance Chart
+    //const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+    // const performanceChart = new Chart(performanceCtx, {
+    //     type: 'line',
+    //     data: {
+    //         labels: {{ performance_dates|safe }},
+    //         datasets: [{
+    //             label: 'Daily P/L',
+    //             data: {{ performance_values|safe }},
+    //             borderColor: 'rgb(75, 192, 192)',
+    //             backgroundColor: 'rgba(75, 192, 192, 0.2)',
+    //             tension: 0.1
+    //         }]
+    //     },
+    //     options: {
+    //         responsive: true,
+    //         maintainAspectRatio: false,
+    //         animation: {
+    //             duration: 0 // Disable animations to reduce requestAnimationFrame overhead
+    //         },
+    //         transitions: {
+    //             active: {
+    //                 animation: {
+    //                     duration: 0
+    //                 }
+    //             }
+    //         },
+    //         scales: {
+    //             y: {
+    //                 beginAtZero: false
+    //             }
+    //         },
+    //         plugins: {
+    //             legend: {
+    //                 display: true
+    //             }
+    //         }
+    //     }
+    // });
+    
+    // Strategy Distribution Chart
+    // const strategyCtx = document.getElementById('strategyChart').getContext('2d');
+    // const strategyChart = new Chart(strategyCtx, {
+    //     type: 'doughnut',
+    //     data: {
+    //         labels: {{ strategy_names|safe }},
+    //         datasets: [{
+    //             data: {{ strategy_counts|safe }},
+    //             backgroundColor: [
+    //                 'rgba(255, 99, 132, 0.8)',
+    //                 'rgba(54, 162, 235, 0.8)',
+    //                 'rgba(255, 206, 86, 0.8)',
+    //                 'rgba(75, 192, 192, 0.8)',
+    //                 'rgba(153, 102, 255, 0.8)',
+    //             ]
+    //         }]
+    //     },
+    //     options: {
+    //         responsive: true,
+    //         maintainAspectRatio: false,
+    //         animation: {
+    //             duration: 0 // Disable animations to reduce requestAnimationFrame overhead
+    //         },
+    //         transitions: {
+    //             active: {
+    //                 animation: {
+    //                     duration: 0
+    //                 }
+    //             }
+    //         }
+    //     }
+    // });
+    
+    // Auto-refresh stats - throttled to avoid performance issues
+    let statsUpdateTimer = null;
+    const STATS_UPDATE_INTERVAL = 30000; // 30 seconds
+    
+    function updateStats() {
+        // Clear any existing timer
+        if (statsUpdateTimer) {
+            clearTimeout(statsUpdateTimer);
+        }
+        
+        // Use setTimeout instead of setInterval for better control
+        statsUpdateTimer = setTimeout(function() {
+            const targetElement = document.getElementById('dashboard-stats');
+            if (targetElement) {
+                htmx.ajax('GET', '{% url "admin_dashboard_stats" %}', {
+                    target: '#dashboard-stats',
+                    swap: 'innerHTML'
+                });
+            }
+            updateStats(); // Schedule next update
+        }, STATS_UPDATE_INTERVAL);
+    }
+    
+    // Start stats update loop
+    updateStats();
+</script>
+{% endblock %}

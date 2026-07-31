@@ -1,0 +1,178 @@
+{% extends "stocks/admin_base.html" %}
+
+{% block title %}Sitemap - Admin Dashboard{% endblock %}
+
+{% block page_title %}Admin Dashboard Sitemap{% endblock %}
+{% block page_subtitle %}Complete list of all available pages and endpoints{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="stat-card">
+            <h4 class="mb-4"><i class="fas fa-sitemap mr-2"></i>Main Pages</h4>
+            
+            <div class="list-group mb-4">
+                <a href="{% url 'admin_dashboard' %}" class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1"><i class="fas fa-home mr-2"></i>Dashboard Overview</h5>
+                        <small class="text-muted">/stocks/admin/</small>
+                    </div>
+                    <p class="mb-1">Main dashboard with quick stats, performance charts, recent signals, and system alerts</p>
+                    <small>Features: Stats cards, Performance chart (7 days), Strategy distribution, Recent signals feed, System alerts</small>
+                </a>
+                
+                <a href="{% url 'admin_strategies' %}" class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1"><i class="fas fa-cogs mr-2"></i>Strategies Management</h5>
+                        <small class="text-muted">/stocks/admin/strategies/</small>
+                    </div>
+                    <p class="mb-1">Manage trading strategies - enable, disable, view details</p>
+                    <small>Features: List strategies, Filter by status, Enable/Disable, View details, Register new</small>
+                </a>
+                
+                <a href="{% url 'admin_positions' %}" class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1"><i class="fas fa-briefcase mr-2"></i>Positions Management</h5>
+                        <small class="text-muted">/stocks/admin/positions/</small>
+                    </div>
+                    <p class="mb-1">Monitor and manage open trading positions</p>
+                    <small>Features: Open positions table, Position statistics, Real-time updates (5s), Close position</small>
+                </a>
+                
+                <a href="{% url 'admin_performance' %}" class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1"><i class="fas fa-chart-bar mr-2"></i>Performance Tracking</h5>
+                        <small class="text-muted">/stocks/admin/performance/</small>
+                    </div>
+                    <p class="mb-1">Track trading performance and strategy metrics</p>
+                    <small>Features: Daily P/L chart, Time filters (7/30/90/365 days), Strategy performance table, Win rate stats</small>
+                </a>
+                
+                <a href="{% url 'admin_risk' %}" class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1"><i class="fas fa-shield-alt mr-2"></i>Risk Management</h5>
+                        <small class="text-muted">/stocks/admin/risk/</small>
+                    </div>
+                    <p class="mb-1">Monitor exposure and manage risk limits</p>
+                    <small>Features: Current exposure display, Exposure progress bar, Risk limits form, Risk alerts feed</small>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="stat-card">
+            <h5 class="mb-3"><i class="fas fa-sync-alt mr-2"></i>HTMX Auto-Refresh Endpoints</h5>
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Endpoint</th>
+                        <th>Refresh</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>/admin/dashboard/stats/</code></td>
+                        <td><span class="badge badge-info">30s</span></td>
+                    </tr>
+                    <tr>
+                        <td><code>/admin/dashboard/recent-signals/</code></td>
+                        <td><span class="badge badge-info">10s</span></td>
+                    </tr>
+                    <tr>
+                        <td><code>/admin/dashboard/system-alerts/</code></td>
+                        <td><span class="badge badge-info">15s</span></td>
+                    </tr>
+                    <tr>
+                        <td><code>/admin/strategies/table/</code></td>
+                        <td><span class="badge badge-info">10s</span></td>
+                    </tr>
+                    <tr>
+                        <td><code>/admin/positions/table/</code></td>
+                        <td><span class="badge badge-info">5s</span></td>
+                    </tr>
+                    <tr>
+                        <td><code>/admin/risk/alerts/</code></td>
+                        <td><span class="badge badge-info">10s</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="stat-card">
+            <h5 class="mb-3"><i class="fas fa-cog mr-2"></i>Action Endpoints</h5>
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Action</th>
+                        <th>Method</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>/admin/strategies/&lt;id&gt;/enable/</code></td>
+                        <td><span class="badge badge-success">POST</span></td>
+                    </tr>
+                    <tr>
+                        <td><code>/admin/strategies/&lt;id&gt;/disable/</code></td>
+                        <td><span class="badge badge-danger">POST</span></td>
+                    </tr>
+                    <tr>
+                        <td><code>/admin/strategies/&lt;id&gt;/</code></td>
+                        <td><span class="badge badge-info">GET</span></td>
+                    </tr>
+                    <tr>
+                        <td><code>/admin/risk/update/</code></td>
+                        <td><span class="badge badge-warning">POST</span></td>
+                    </tr>
+                    <tr>
+                        <td><code>/admin/positions/&lt;id&gt;/close/</code></td>
+                        <td><span class="badge badge-danger">POST</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="stat-card">
+            <h5 class="mb-3"><i class="fas fa-code mr-2"></i>REST API Endpoints</h5>
+            <p class="mb-2">Base URL: <code>/stocks/api/trading/</code></p>
+            <p class="text-muted">See <code>API_DOCUMENTATION.md</code> for complete API documentation</p>
+            <ul class="list-unstyled">
+                <li><code>GET /strategies/</code> - List all strategies</li>
+                <li><code>GET /strategies/&lt;id&gt;/status/</code> - Get strategy status</li>
+                <li><code>POST /strategies/&lt;id&gt;/enable/</code> - Enable strategy</li>
+                <li><code>POST /strategies/&lt;id&gt;/disable/</code> - Disable strategy</li>
+                <li><code>GET /positions/</code> - List all positions</li>
+                <li><code>GET /positions/&lt;id&gt;/</code> - Get position details</li>
+                <li><code>GET /performance/</code> - Get overall performance</li>
+                <li><code>GET /risk/exposure/</code> - Get current exposure</li>
+                <li><code>GET /status/</code> - Get system status</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="stat-card">
+            <h5 class="mb-3"><i class="fas fa-link mr-2"></i>Other Stock Pages</h5>
+            <ul class="list-unstyled">
+                <li><a href="{% url 'stock_dashboard' %}"><code>/stocks/dashboard/</code></a> - Stock price chart</li>
+                <li><a href="{% url 'stock_positions' %}"><code>/stocks/positions/</code></a> - Open positions (legacy)</li>
+                <li><code>/stocks/backtesresults/</code> - Backtest results</li>
+                <li><code>/stocks/backtesview/</code> - Backtest visualization</li>
+                <li><code>/stocks/itc-price/</code> - Live price API (JSON)</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
