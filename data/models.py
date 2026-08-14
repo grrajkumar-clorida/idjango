@@ -38,8 +38,14 @@ class StockPriceData(models.Model):
         """Latest row per stock_code (ordering is -date). First write wins."""
         mapping = {}
         for row in cls.objects.order_by("-date", "-id"):
-            if row.stock_code and row.stock_code not in mapping:
-                mapping[row.stock_code] = row
+            code = (row.stock_code or "").strip()
+            if not code:
+                continue
+            if code not in mapping:
+                mapping[code] = row
+            upper = code.upper()
+            if upper not in mapping:
+                mapping[upper] = row
         return mapping
 
 class Stocks50MA(models.Model):

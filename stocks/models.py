@@ -72,8 +72,48 @@ class LiveTrade(models.Model):
     market_conditions = models.JSONField(default=dict, blank=True, help_text="Market conditions at trade time")
     notes = models.TextField(blank=True, help_text="Additional trade notes")
 
+    # Phase 2 desk: human qty / profit booking / source
+    remaining_quantity = models.IntegerField(
+        null=True, blank=True,
+        help_text="Open qty still held. Defaults to quantity on fill.",
+    )
+    profit_book_price = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Human profit-booking limit (price).",
+    )
+    profit_book_qty = models.IntegerField(
+        null=True, blank=True,
+        help_text="Qty to sell when profit-book price is hit.",
+    )
+    price_min = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    price_max = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    SOURCE_CHOICES = [
+        ("signal", "50MA signal"),
+        ("manual", "Manual order"),
+        ("tracked", "Tracked (external fill)"),
+    ]
+    source = models.CharField(max_length=16, choices=SOURCE_CHOICES, default="signal")
+    review = models.ForeignKey(
+        "TradeReview", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="fills",
+    )
+
     def __str__(self):
         return f"{self.stock_code} - {self.action} - {self.status}"
+
+    def open_qty(self):
+        if self.remaining_quantity is not None:
+            return self.remaining_quantity
+        return self.quantity or 0
+
+    def pnl_percent(self):
+        entry = float(self.entry_price or self.price or 0)
+        if not entry:
+            return 0.0
+        invested = entry * self.open_qty()
+        if invested <= 0:
+            return 0.0
+        return float(self.profit_loss or 0) / invested * 100
     
     def calculate_risk_reward(self):
         """Calculate risk-reward ratio"""
@@ -92,7 +132,74 @@ class LiveTrade(models.Model):
             return self.trade_duration
         return None
 
-    # Back testing 
+
+class TradeReview(models.Model):
+    """
+    Human review queue for Path A status-8 signals (and manual entries).
+    Executor places the order only after status=approved, using human qty/price.
+    """
+    STATUS_CHOICES = [
+        ("pending", "Pending review"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+        ("placed", "Order placed"),
+        ("failed", "Place failed"),
+    ]
+    SOURCE_CHOICES = [
+        ("signal", "50MA status 8"),
+        ("manual", "Manual order"),
+        ("tracked", "Tracked (external fill)"),
+    ]
+    ORDER_TYPE_CHOICES = [
+        ("MARKET", "Market"),
+        ("LIMIT", "Limit"),
+    ]
+
+    stock_code = models.CharField(max_length=16, db_index=True)
+    ticker = models.CharField(max_length=50, blank=True, default="")
+    name = models.CharField(max_length=200, blank=True, default="")
+    source = models.CharField(max_length=16, choices=SOURCE_CHOICES, default="signal")
+    status = models.CharField(
+        max_length=16, choices=STATUS_CHOICES, default="pending", db_index=True
+    )
+
+    suggested_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    live_50ma = models.FloatField(null=True, blank=True)
+    cp50ma_percent = models.FloatField(null=True, blank=True)
+
+    qty = models.IntegerField(default=1)
+    order_type = models.CharField(max_length=10, choices=ORDER_TYPE_CHOICES, default="MARKET")
+    price_min = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    price_max = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    limit_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    stop_loss = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    take_profit = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Profit-booking limit (price).",
+    )
+    take_profit_qty = models.IntegerField(
+        null=True, blank=True,
+        help_text="Qty to book when take-profit is hit. Blank = full qty.",
+    )
+    notes = models.CharField(max_length=255, blank=True, default="")
+    last_error = models.CharField(max_length=255, blank=True, default="")
+
+    reviewed_by = models.CharField(max_length=80, blank=True, default="")
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    placed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["stock_code", "status"]),
+        ]
+
+    def __str__(self):
+        return f"{self.stock_code} {self.status} qty={self.qty}"
+
+
 class BacktestResult(models.Model):
     strategy_name = models.CharField(max_length=100)
     stock_code = models.CharField(max_length=10)

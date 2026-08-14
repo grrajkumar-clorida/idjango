@@ -9,6 +9,7 @@ from data.models import StockPriceData, Stocks50MA
 from data.strategies.ma50_strategy import MA50Strategy
 from infra.utils.gfinance import get_gfinance_data, update_gfinance_data
 from infra.utils.infra import date_format, safe_float
+from stocks.models import LiveTrade
 
 
 class Command(BaseCommand):
@@ -21,7 +22,26 @@ class Command(BaseCommand):
             .values_list("stock_code", flat=True)
             .distinct()
         )
-        self.stdout.write(f"Total Stocks of 50MA: {len(stock_list)}")
+        open_codes = list(
+            LiveTrade.objects.filter(status="Executed")
+            .exclude(stock_code__isnull=True)
+            .exclude(stock_code="")
+            .values_list("stock_code", flat=True)
+            .distinct()
+        )
+        seen = set()
+        merged = []
+        for code in stock_list + open_codes:
+            key = (code or "").strip().upper()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            merged.append(key)
+        stock_list = merged
+        self.stdout.write(
+            f"Total Stocks of 50MA + open positions: {len(stock_list)} "
+            f"(open {len(open_codes)})"
+        )
         if not stock_list:
             self.stdout.write(self.style.WARNING("No Stocks50MA rows — nothing to fetch."))
             return

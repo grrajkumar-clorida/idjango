@@ -21,8 +21,11 @@ def execute_50ma_orders():
         executor = OrderExecutor()
         results = executor.execute_orders_for_status_8()
         
-        logger.info(f"50MA Order Execution: {results['executed']} executed, "
-                   f"{results['skipped']} skipped, {results['failed']} failed")
+        logger.info(
+            f"50MA desk: queued={results.get('queued', 0)}, "
+            f"executed={results.get('executed', 0)}, "
+            f"skipped={results.get('skipped', 0)}, failed={results.get('failed', 0)}"
+        )
         
         return results
     except Exception as e:

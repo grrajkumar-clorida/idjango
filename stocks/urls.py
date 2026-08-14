@@ -1,7 +1,7 @@
 from django.urls import path, include
 from . import views
 from . import admin_views
-#from .views import stock_dashboard
+from . import trading_views
 
 urlpatterns = [
     path("dashboard/", views.stock_dashboard, name="stock_dashboard"),
@@ -9,8 +9,21 @@ urlpatterns = [
     path('backtesresults/', views.backtest_results, name='results'),
     path("itc-price/", views.get_live_price, name="get_live_price"),
     path("web-scr/", views.get_web_data, name="get_web_data"),
-    path("positions/", views.open_positions, name="stock_positions"),
-    
+
+    # Phase 2 desk
+    path("review/", trading_views.review_queue, name="desk_review"),
+    path("review/suggest/", trading_views.stock_suggest, name="desk_review_suggest"),
+    path("review/<int:pk>/approve/", trading_views.review_approve, name="desk_review_approve"),
+    path("review/<int:pk>/place/", trading_views.review_place, name="desk_review_place"),
+    path("review/<int:pk>/reject/", trading_views.review_reject, name="desk_review_reject"),
+    path("review/manual/", trading_views.review_manual, name="desk_review_manual"),
+    path("order/", trading_views.order_list, name="desk_orders"),
+    path("orders/", trading_views.order_list, name="desk_orders_alias"),
+    path("positions/", trading_views.position_list, name="desk_positions"),
+    path("positions/", trading_views.position_list, name="stock_positions"),
+    path("positions/refresh-prices/", trading_views.position_refresh_prices, name="desk_position_refresh"),
+    path("positions/<int:pk>/update/", trading_views.position_update, name="desk_position_update"),
+
     # Admin Dashboard Routes
     path("admin/", admin_views.admin_dashboard, name="admin_dashboard"),
     path("admin/dashboard/stats/", admin_views.admin_dashboard_stats, name="admin_dashboard_stats"),

@@ -1,0 +1,376 @@
+{% extends "stocks/admin_base.html" %}
+
+{% block title %}Review — status 8{% endblock %}
+{% block page_title %}Human review{% endblock %}
+{% block page_subtitle %}Status 8 green signals. Set qty and price range, then approve.{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div class="mb-3">
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if paper %}
+<div class="alert alert-warning">PAPER_TRADING_MODE is on — fills are simulated, not sent to Breeze.</div>
+{% endif %}
+
+<p class="text-muted mb-3">
+  Status 8 names: <strong>{{ status8_count }}</strong>.
+  Executor queues them here. It only places an order after you approve,
+  and only if live CMP is inside your min–max range.
+</p>
+
+<div class="row mb-4">
+  <div class="col-lg-6 mb-3">
+    <div class="card h-100">
+      <div class="card-header">1) Manual order</div>
+      <div class="card-body">
+        <p class="small text-muted">Place a new BUY through the desk (queue or send now). CMP must later sit in your min–max range.</p>
+        <form method="post" action="{% url 'desk_review_manual' %}">
+          {% csrf_token %}
+          <input type="hidden" name="mode" value="order">
+          <div class="form-row">
+            <div class="col-md-4 mb-2">
+              <label>Stock</label>
+              <div class="stock-suggest-wrap">
+                <input class="form-control js-stock-suggest" name="stock_code" placeholder="TATATECH" autocomplete="off" required>
+              </div>
+            </div>
+            <div class="col-md-2 mb-2">
+              <label>Qty</label>
+              <input class="form-control" type="number" name="qty" value="1" min="1">
+            </div>
+            <div class="col-md-3 mb-2">
+              <label>CMP hint</label>
+              <input class="form-control" type="number" step="0.05" name="suggested_price">
+            </div>
+            <div class="col-md-3 mb-2">
+              <label>Type</label>
+              <select class="form-control" name="order_type">
+                <option value="MARKET">Market</option>
+                <option value="LIMIT">Limit</option>
+              </select>
+            </div>
+            <div class="col-md-3 mb-2">
+              <label>Price min</label>
+              <input class="form-control" type="number" step="0.05" name="price_min">
+            </div>
+            <div class="col-md-3 mb-2">
+              <label>Price max</label>
+              <input class="form-control" type="number" step="0.05" name="price_max">
+            </div>
+            <div class="col-md-3 mb-2">
+              <label>Book price</label>
+              <input class="form-control" type="number" step="0.05" name="take_profit">
+            </div>
+            <div class="col-md-3 mb-2">
+              <label>Book qty</label>
+              <input class="form-control" type="number" name="take_profit_qty" value="1" min="1">
+            </div>
+            <div class="col-md-8 mb-2">
+              <label>Notes</label>
+              <input class="form-control" name="notes" placeholder="Manual order">
+            </div>
+            <div class="col-md-4 mb-2 d-flex align-items-end">
+              <button class="btn btn-secondary mr-2" type="submit">Queue</button>
+              <button class="btn btn-success" type="submit" name="place_now" value="1">Place now</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6 mb-3">
+    <div class="card h-100">
+      <div class="card-header">2) Track existing position</div>
+      <div class="card-body">
+        <p class="small text-muted">Already bought outside this app. No Breeze order — only P/L and profit-book monitoring.<br>
+          Example: TATATECH qty 1 @ 745.35 on 29-Jul-2026 10:47</p>
+        <form method="post" action="{% url 'desk_review_manual' %}">
+          {% csrf_token %}
+          <input type="hidden" name="mode" value="track">
+          <div class="form-row">
+            <div class="col-md-4 mb-2">
+              <label>Stock</label>
+              <div class="stock-suggest-wrap">
+                <input class="form-control js-stock-suggest" name="stock_code" placeholder="TATATECH" autocomplete="off" required>
+              </div>
+            </div>
+            <div class="col-md-2 mb-2">
+              <label>Qty</label>
+              <input class="form-control" type="number" name="qty" value="1" min="1" required>
+            </div>
+            <div class="col-md-3 mb-2">
+              <label>Buy / book price</label>
+              <input class="form-control" type="number" step="0.05" name="entry_price" placeholder="745.35" required>
+            </div>
+            <div class="col-md-3 mb-2">
+              <label>Entry time</label>
+              <input class="form-control" type="datetime-local" id="entry-at-local" name="entry_at_local">
+              <input class="form-control mt-1" id="entry-at-text" name="entry_at" placeholder="29-Jul-2026 10:47">
+              <small class="text-muted">Calendar or type 29-Jul-2026 10:47</small>
+            </div>
+            <div class="col-md-3 mb-2">
+              <label>Profit book price</label>
+              <input class="form-control" type="number" step="0.05" name="take_profit" placeholder="optional">
+            </div>
+            <div class="col-md-3 mb-2">
+              <label>Book qty</label>
+              <input class="form-control" type="number" name="take_profit_qty" value="1" min="1">
+            </div>
+            <div class="col-md-3 mb-2">
+              <label>Stop loss</label>
+              <input class="form-control" type="number" step="0.05" name="stop_loss">
+            </div>
+            <div class="col-md-3 mb-2">
+              <label>Notes</label>
+              <input class="form-control" name="notes" placeholder="Broker fill">
+            </div>
+            <div class="col-md-12 mb-2">
+              <button class="btn btn-primary" type="submit">Add to positions</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-sm table-striped">
+    <thead>
+      <tr>
+        <th>Stock</th>
+        <th>Live CMP</th>
+        <th>50MA / %</th>
+        <th>Qty</th>
+        <th>Price min–max</th>
+        <th>Book price / qty</th>
+        <th>SL</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in pending %}
+      <tr>
+        <td>
+          <strong>{{ r.stock_code }}</strong>
+          <div class="small text-muted">{{ r.ticker }} {{ r.name }}</div>
+          <span class="badge badge-{% if r.status == 'pending' %}warning{% elif r.status == 'approved' %}info{% else %}danger{% endif %}">{{ r.status }}</span>
+          <div class="small">{{ r.source }}</div>
+        </td>
+        <td>
+          {{ r.live_price|default:r.suggested_price }}
+          {% if r.last_error %}<div class="small text-danger">{{ r.last_error }}</div>{% endif %}
+        </td>
+        <td class="small">
+          {{ r.live_50|default:r.live_50ma|default:"—" }}
+          <br>{{ r.live_cp50|default:r.cp50ma_percent|default:"—" }}%
+        </td>
+        <td colspan="5">
+          <form method="post" class="form-row align-items-end">
+            {% csrf_token %}
+            <div class="col-1">
+              <input class="form-control form-control-sm" type="number" name="qty" value="{{ r.qty }}" min="1">
+            </div>
+            <div class="col-2">
+              <div class="input-group input-group-sm">
+                <input class="form-control" type="number" step="0.05" name="price_min" value="{{ r.price_min|default_if_none:'' }}" placeholder="min">
+                <input class="form-control" type="number" step="0.05" name="price_max" value="{{ r.price_max|default_if_none:'' }}" placeholder="max">
+              </div>
+            </div>
+            <div class="col-2">
+              <div class="input-group input-group-sm">
+                <input class="form-control" type="number" step="0.05" name="take_profit" value="{{ r.take_profit|default_if_none:'' }}" placeholder="TP">
+                <input class="form-control" type="number" name="take_profit_qty" value="{{ r.take_profit_qty|default_if_none:r.qty }}" placeholder="qty">
+              </div>
+            </div>
+            <div class="col-1">
+              <input class="form-control form-control-sm" type="number" step="0.05" name="stop_loss" value="{{ r.stop_loss|default_if_none:'' }}">
+            </div>
+            <div class="col-2">
+              <input class="form-control form-control-sm" name="notes" value="{{ r.notes }}">
+            </div>
+            <div class="col-4">
+              <button class="btn btn-sm btn-outline-primary" formaction="{% url 'desk_review_approve' r.pk %}">Approve</button>
+              <button class="btn btn-sm btn-success" formaction="{% url 'desk_review_place' r.pk %}">Approve &amp; Place</button>
+              <button class="btn btn-sm btn-outline-danger" formaction="{% url 'desk_review_reject' r.pk %}">Reject</button>
+            </div>
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="text-muted">No pending status-8 reviews. Run fetch_price_data or wait for beat.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if recent %}
+<h5 class="mt-4">Recent placed / rejected</h5>
+<table class="table table-sm">
+  <thead><tr><th>Stock</th><th>Status</th><th>Qty</th><th>When</th></tr></thead>
+  <tbody>
+    {% for r in recent %}
+    <tr>
+      <td>{{ r.stock_code }}</td>
+      <td>{{ r.status }}</td>
+      <td>{{ r.qty }}</td>
+      <td class="small">{{ r.updated_at }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.stock-suggest-wrap { position: relative; }
+.stock-suggest {
+  display: none;
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: 100%;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,.12);
+}
+.stock-suggest-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.875rem;
+}
+.stock-suggest-item:hover,
+.stock-suggest-item.active { background: #e9f2ff; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  var suggestUrl = "{% url 'desk_review_suggest' %}";
+  var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  function bindStockSuggest(input) {
+    var wrap = input.closest(".stock-suggest-wrap") || input.parentNode;
+    wrap.style.position = "relative";
+    var box = document.createElement("div");
+    box.className = "stock-suggest";
+    wrap.appendChild(box);
+    var timer = null;
+    var active = -1;
+
+    function hide() {
+      box.innerHTML = "";
+      box.style.display = "none";
+      active = -1;
+    }
+    function items() {
+      return Array.prototype.slice.call(box.querySelectorAll(".stock-suggest-item"));
+    }
+    function highlight() {
+      items().forEach(function (el, i) {
+        el.classList.toggle("active", i === active);
+      });
+    }
+    function pick(code) {
+      input.value = code;
+      hide();
+    }
+    function show(results) {
+      if (!results.length) { hide(); return; }
+      box.innerHTML = "";
+      results.forEach(function (r) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "stock-suggest-item";
+        btn.setAttribute("data-code", r.code || "");
+        btn.textContent = r.label || r.code;
+        btn.addEventListener("mousedown", function (e) {
+          e.preventDefault();
+          pick(r.code);
+        });
+        box.appendChild(btn);
+      });
+      box.style.display = "block";
+      active = -1;
+    }
+    function fetchQ() {
+      var q = input.value.trim();
+      fetch(suggestUrl + "?q=" + encodeURIComponent(q))
+        .then(function (r) { return r.json(); })
+        .then(function (data) { show(data.results || []); })
+        .catch(hide);
+    }
+    input.addEventListener("input", function () {
+      clearTimeout(timer);
+      timer = setTimeout(fetchQ, 160);
+    });
+    input.addEventListener("focus", fetchQ);
+    input.addEventListener("blur", function () { setTimeout(hide, 180); });
+    input.addEventListener("keydown", function (e) {
+      var list = items();
+      if (!list.length) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        active = (active + 1) % list.length;
+        highlight();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        active = (active - 1 + list.length) % list.length;
+        highlight();
+      } else if (e.key === "Enter" && active >= 0) {
+        e.preventDefault();
+        pick(list[active].getAttribute("data-code"));
+      } else if (e.key === "Escape") {
+        hide();
+      }
+    });
+  }
+
+  document.querySelectorAll(".js-stock-suggest").forEach(bindStockSuggest);
+
+  var localEl = document.getElementById("entry-at-local");
+  var textEl = document.getElementById("entry-at-text");
+  if (!localEl || !textEl) return;
+
+  function toDesk(value) {
+    var m = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (!m) return "";
+    return m[3] + "-" + months[parseInt(m[2], 10) - 1] + "-" + m[1] + " " + m[4] + ":" + m[5];
+  }
+  function fromDesk(value) {
+    var m = String(value || "").match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})\s+(\d{1,2}):(\d{2})/);
+    if (!m) return "";
+    var mi = months.findIndex(function (x) { return x.toLowerCase() === m[2].toLowerCase(); });
+    if (mi < 0) return "";
+    var dd = ("0" + m[1]).slice(-2);
+    var mm = ("0" + (mi + 1)).slice(-2);
+    var hh = ("0" + m[4]).slice(-2);
+    return m[3] + "-" + mm + "-" + dd + "T" + hh + ":" + m[5];
+  }
+  localEl.addEventListener("change", function () {
+    var desk = toDesk(localEl.value);
+    if (desk) textEl.value = desk;
+  });
+  textEl.addEventListener("blur", function () {
+    var iso = fromDesk(textEl.value);
+    if (iso) localEl.value = iso;
+  });
+})();
+</script>
+{% endblock %}

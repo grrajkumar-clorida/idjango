@@ -1,11 +1,16 @@
 """
-Position Monitor for 50MA Strategy
-Monitors open positions and updates statuses, executes exits
+Position monitor for Path A / human desk.
+
+Uses the human profit-booking price and qty on LiveTrade when set.
+Falls back to the 50MA 8–10% rule. Always refreshes P/L from latest CMP.
 """
 import logging
 from decimal import Decimal
-from typing import Dict, List
+from typing import Dict
+
 from django.conf import settings
+from django.utils import timezone
+
 from data.models import Stocks50MA, StockPriceData
 from data.strategies.ma50_strategy import MA50Strategy
 from infra.utils.breeze_client import BreezeAPI
@@ -15,138 +20,133 @@ logger = logging.getLogger(__name__)
 
 
 class PositionMonitor:
-    """Monitors and manages open positions"""
-    
+    """Monitors open positions, books human TP, updates P/L."""
+
     def __init__(self):
-        self.breeze = BreezeAPI()
+        self._breeze = None
         self.strategy = MA50Strategy()
-        self.paper_trading = getattr(settings, 'PAPER_TRADING_MODE', True)
-    
+        self.paper_trading = getattr(settings, "PAPER_TRADING_MODE", True)
+
+    @property
+    def breeze(self):
+        if self._breeze is None:
+            self._breeze = BreezeAPI()
+        return self._breeze
+
     def monitor_all_positions(self) -> Dict:
-        """
-        Monitor all open positions and update statuses
-        
-        Returns:
-            Dict with monitoring results
-        """
-        # Get all open trades
         open_trades = LiveTrade.objects.filter(status="Executed")
-        
         live_data_map = StockPriceData.latest_by_stock_code()
-        
+
         results = {
-            'total': open_trades.count(),
-            'updated': 0,
-            'exited': 0,
-            'details': []
+            "total": open_trades.count(),
+            "updated": 0,
+            "exited": 0,
+            "details": [],
         }
-        
+
         for trade in open_trades:
-            live_data = live_data_map.get(trade.stock_code)
-            
-            if not live_data:
+            code = (trade.stock_code or "").strip()
+            live_data = live_data_map.get(code) or live_data_map.get(code.upper())
+            if not live_data or not live_data.close_price:
                 continue
-            
-            current_price = live_data.close_price
-            entry_price = float(trade.price)
-            
-            # Get corresponding Stocks50MA record
+
+            current_price = float(live_data.close_price)
+            entry_price = float(trade.entry_price or trade.price or 0)
+            if not entry_price:
+                continue
+
             stock = Stocks50MA.objects.filter(stock_code=trade.stock_code).first()
-            
-            if not stock:
-                continue
-            
-            # Check exit conditions
-            is_bottom_entry = self.strategy.is_bottom_entry(stock, live_data) if stock else False
-            
-            exit_check = self.strategy.check_exit_condition(
-                entry_price,
-                current_price,
-                is_bottom_entry
-            )
-            
-            # Update status based on price
-            new_status = self.strategy.update_status_based_on_price(
-                stock,
-                live_data,
-                entry_price
-            )
-            
-            # Update stock status if changed
-            if new_status != stock.status:
-                stock.status = new_status
-                stock.save()
-                results['updated'] += 1
-                results['details'].append({
-                    'script': trade.stock_code,
-                    'old_status': trade.status,
-                    'new_status': new_status,
-                    'current_price': current_price,
-                    'profit_percent': exit_check['profit_percent']
-                })
-            
-            # Execute exit if conditions met
-            if exit_check['should_exit']:
-                exit_result = self.execute_exit(trade, exit_check, current_price)
-                
-                if exit_result['success']:
-                    results['exited'] += 1
-                    results['details'].append({
-                        'script': trade.stock_code,
-                        'action': 'exited',
-                        'exit_type': exit_check['exit_type'],
-                        'exit_percent': exit_check['exit_percent']
+            exit_check = self._exit_plan(trade, current_price, entry_price, stock, live_data)
+
+            if stock:
+                new_status = self.strategy.update_status_based_on_price(
+                    stock, live_data, entry_price
+                )
+                if new_status != stock.status:
+                    stock.status = new_status
+                    stock.save(update_fields=["status"])
+                    results["updated"] += 1
+                    results["details"].append({
+                        "script": trade.stock_code,
+                        "old_status": trade.status,
+                        "new_status": new_status,
+                        "current_price": current_price,
+                        "profit_percent": exit_check.get("profit_percent", 0),
                     })
-            
-            # Update P/L
-            self.update_profit_loss(trade, current_price, entry_price)
-        
+
+            if exit_check.get("should_exit"):
+                exit_result = self.execute_exit(trade, exit_check, current_price)
+                if exit_result.get("success"):
+                    results["exited"] += 1
+                    results["details"].append({
+                        "script": trade.stock_code,
+                        "action": "exited",
+                        "exit_type": exit_check.get("exit_type"),
+                        "exit_percent": exit_check.get("exit_percent"),
+                    })
+
+            # Re-read qty after possible partial exit
+            trade.refresh_from_db()
+            if trade.status == "Executed":
+                self.update_profit_loss(trade, current_price, entry_price)
+
         return results
-    
-    def execute_exit(self, trade: LiveTrade, exit_check: Dict, current_price: float) -> Dict:
-        """
-        Execute exit order
-        
-        Args:
-            trade: LiveTrade object
-            exit_check: Exit condition check result
-            current_price: Current market price
-        
-        Returns:
-            Dict with exit result
-        """
-        exit_type = exit_check['exit_type']
-        exit_percent = exit_check['exit_percent']
-        
-        # Calculate quantity to exit
-        if exit_type == 'full':
-            exit_quantity = trade.quantity
-        else:  # partial
-            exit_quantity = int(trade.quantity * (exit_percent / 100))
-        
-        if exit_quantity == 0:
-            return {'success': False, 'message': 'Exit quantity is 0'}
-        
-        if self.paper_trading:
-            # Paper trading mode
-            logger.info(f"PAPER TRADING: Would place SELL order for {trade.stock_code}")
-            logger.info(f"  Quantity: {exit_quantity}/{trade.quantity}, Type: {exit_type}")
-            
-            # Update trade
-            if exit_type == 'full':
-                trade.status = "Closed"
-            else:
-                trade.quantity -= exit_quantity
-            
-            trade.save()
-            
+
+    def _exit_plan(self, trade, current_price, entry_price, stock, live_data) -> Dict:
+        """Human TP first, then 50MA strategy bands."""
+        profit_percent = ((current_price - entry_price) / entry_price) * 100
+        open_qty = trade.open_qty()
+
+        tp_price = trade.profit_book_price or trade.take_profit
+        if tp_price and current_price >= float(tp_price) and open_qty > 0:
+            book_qty = trade.profit_book_qty or open_qty
+            book_qty = min(int(book_qty), open_qty)
+            exit_type = "full" if book_qty >= open_qty else "partial"
             return {
-                'success': True,
-                'message': f'Paper trade exit executed ({exit_type})',
-                'exit_quantity': exit_quantity
+                "should_exit": True,
+                "exit_type": exit_type,
+                "exit_percent": (book_qty / open_qty) * 100 if open_qty else 100,
+                "exit_qty": book_qty,
+                "profit_percent": profit_percent,
+                "reason": f"Human profit book at {tp_price}",
             }
-        else:
-            # Live trading mode
+
+        if stock and live_data:
+            is_bottom = self.strategy.is_bottom_entry(stock, live_data)
+            strategy_exit = self.strategy.check_exit_condition(
+                entry_price, current_price, is_bottom
+            )
+            if strategy_exit.get("should_exit"):
+                pct = strategy_exit.get("exit_percent") or 100
+                qty = open_qty if pct >= 100 else max(1, int(open_qty * pct / 100))
+                strategy_exit["exit_qty"] = qty
+                return strategy_exit
+
+        return {
+            "should_exit": False,
+            "exit_type": None,
+            "exit_percent": 0,
+            "exit_qty": 0,
+            "profit_percent": profit_percent,
+            "reason": "Hold",
+        }
+
+    def execute_exit(self, trade: LiveTrade, exit_check: Dict, current_price: float) -> Dict:
+        exit_type = exit_check.get("exit_type")
+        open_qty = trade.open_qty()
+        exit_quantity = int(exit_check.get("exit_qty") or 0)
+        if exit_quantity <= 0:
+            if exit_type == "full":
+                exit_quantity = open_qty
+            else:
+                pct = exit_check.get("exit_percent") or 0
+                exit_quantity = int(open_qty * (pct / 100))
+        exit_quantity = min(exit_quantity, open_qty)
+
+        if exit_quantity <= 0:
+            return {"success": False, "message": "Exit quantity is 0"}
+
+        if not self.paper_trading:
             try:
                 response = self.breeze.place_order(
                     stock_code=trade.stock_code,
@@ -155,75 +155,63 @@ class PositionMonitor:
                     order_type="MARKET",
                     price=0,
                     product="cash",
-                    action="SELL"
+                    action="SELL",
                 )
-                
-                if response.get("Status") == "Success" or response.get("Status") == 200:
-                    order_id = response.get("order_id") or response.get("Success", {}).get("order_id", "")
-                    
-                    # Update trade
-                    if exit_type == 'full':
-                        trade.status = "Closed"
-                    else:
-                        trade.quantity -= exit_quantity
-                    
-                    trade.save()
-                    
-                    # Update Orders record
-                    order_record = Orders.objects.filter(
-                        ticker=trade.stock_code,
-                        status=1
-                    ).first()
-                    
-                    if order_record:
-                        if exit_type == 'full':
-                            order_record.status = 0  # Closed
-                        else:
-                            order_record.qty = str(trade.quantity)
-                        
-                        order_record.save()
-                    
-                    logger.info(f"Exit order placed for {trade.stock_code}: {order_id}")
-                    
-                    return {
-                        'success': True,
-                        'message': f'Exit executed ({exit_type})',
-                        'order_id': order_id,
-                        'exit_quantity': exit_quantity
-                    }
-                else:
-                    error_msg = response.get("ErrorMessage", "Unknown error")
-                    logger.error(f"Exit order failed for {trade.stock_code}: {error_msg}")
-                    return {
-                        'success': False,
-                        'message': error_msg
-                    }
-                    
-            except Exception as e:
-                logger.error(f"Exception executing exit for {trade.stock_code}: {str(e)}")
-                return {
-                    'success': False,
-                    'message': f"Exception: {str(e)}"
-                }
-    
-    def update_profit_loss(self, trade: LiveTrade, current_price: float, entry_price: float):
-        """Update profit/loss for a trade"""
-        if trade.action == "BUY":
-            pnl = (current_price - entry_price) * trade.quantity
-        else:
-            pnl = (entry_price - current_price) * trade.quantity
-        
-        trade.profit_loss = Decimal(str(pnl))
+            except Exception as exc:
+                logger.error("Exit failed for %s: %s", trade.stock_code, exc)
+                return {"success": False, "message": str(exc)}
+
+            ok = response.get("Status") in ("Success", 200) if isinstance(response, dict) else False
+            if not ok:
+                err = (response or {}).get("ErrorMessage", "Unknown error")
+                return {"success": False, "message": str(err)}
+
+        logger.info(
+            "EXIT %s qty=%s/%s type=%s paper=%s",
+            trade.stock_code, exit_quantity, open_qty, exit_type, self.paper_trading,
+        )
+
+        remaining = open_qty - exit_quantity
+        trade.remaining_quantity = remaining
+        if remaining <= 0:
+            trade.status = "Closed"
+            trade.exit_price = Decimal(str(current_price))
+            trade.exit_time = timezone.now()
+            trade.exit_reason = exit_check.get("reason") or ""
         trade.save()
-        
-        # Update Orders record
+
         order_record = Orders.objects.filter(
-            ticker=trade.stock_code,
-            status=1
-        ).first()
-        
+            ticker=trade.stock_code, status=1
+        ).order_by("-created_at").first()
         if order_record:
-            order_record.current_value = current_price * trade.quantity
-            order_record.overall_pl = float(pnl)
-            order_record.day_pl = float(pnl)  # Simplified - should calculate daily P/L
+            if remaining <= 0:
+                order_record.status = 0
+                order_record.qty = "0"
+            else:
+                order_record.qty = str(remaining)
             order_record.save()
+
+        return {
+            "success": True,
+            "message": f"Exit executed ({exit_type})",
+            "exit_quantity": exit_quantity,
+        }
+
+    def update_profit_loss(self, trade: LiveTrade, current_price: float, entry_price: float):
+        qty = trade.open_qty()
+        if trade.action == "BUY":
+            pnl = (current_price - entry_price) * qty
+        else:
+            pnl = (entry_price - current_price) * qty
+
+        trade.profit_loss = Decimal(str(round(pnl, 2)))
+        trade.save(update_fields=["profit_loss"])
+
+        order_record = Orders.objects.filter(
+            ticker=trade.stock_code, status=1
+        ).order_by("-created_at").first()
+        if order_record:
+            order_record.current_value = current_price * qty
+            order_record.overall_pl = float(pnl)
+            order_record.day_pl = float(pnl)
+            order_record.save(update_fields=["current_value", "overall_pl", "day_pl"])

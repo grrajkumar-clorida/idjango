@@ -1,0 +1,94 @@
+{% extends "stocks/admin_base.html" %}
+
+{% block title %}Orders{% endblock %}
+{% block page_title %}Placed orders{% endblock %}
+{% block page_subtitle %}All fills from human-approved reviews and manual entries{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div class="mb-3">
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="row mb-4">
+  <div class="col-md-4">
+    <div class="stat-card">
+      <div class="label">Orders listed</div>
+      <div class="value text-primary">{{ total }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card">
+      <div class="label">Invested (open qty)</div>
+      <div class="value">₹{{ invested|floatformat:0 }}</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card">
+      <div class="label">Mark-to-market P/L</div>
+      <div class="value {% if open_pl >= 0 %}text-success{% else %}text-danger{% endif %}">₹{{ open_pl|floatformat:2 }}</div>
+    </div>
+  </div>
+</div>
+
+<form class="form-inline mb-3" method="get">
+  <select name="status" class="form-control mr-2" onchange="this.form.submit()">
+    <option value="all" {% if status == 'all' %}selected{% endif %}>All statuses</option>
+    <option value="Executed" {% if status == 'Executed' %}selected{% endif %}>Executed (open)</option>
+    <option value="Closed" {% if status == 'Closed' %}selected{% endif %}>Closed</option>
+    <option value="Pending" {% if status == 'Pending' %}selected{% endif %}>Pending</option>
+  </select>
+  <input class="form-control mr-2" name="search" value="{{ search }}" placeholder="TATATECH / order id">
+  <button class="btn btn-outline-secondary">Search</button>
+  <a class="btn btn-link" href="{% url 'desk_review' %}">New review</a>
+</form>
+
+<div class="table-responsive">
+  <table class="table table-sm table-striped">
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Stock</th>
+        <th>Side</th>
+        <th>Status</th>
+        <th>Qty / open</th>
+        <th>Entry</th>
+        <th>Live</th>
+        <th>Book @ / qty</th>
+        <th>P/L</th>
+        <th>Source</th>
+        <th>Order id</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in trades %}
+      <tr>
+        <td class="small">{{ t.entry_time|default:t.timestamp }}</td>
+        <td>
+          <a href="https://in.tradingview.com/chart/?symbol=NSE%3A{{ t.stock_code }}" target="_blank">{{ t.stock_code }}</a>
+        </td>
+        <td>{{ t.action }}</td>
+        <td>
+          <span class="badge badge-{% if t.status == 'Executed' %}success{% elif t.status == 'Closed' %}secondary{% else %}warning{% endif %}">{{ t.status }}</span>
+        </td>
+        <td>{{ t.quantity }} / {{ t.open_qty }}</td>
+        <td>{{ t.entry_price|default:t.price }}</td>
+        <td>{{ t.live_price|default_if_none:"—" }}</td>
+        <td class="small">{{ t.profit_book_price|default:t.take_profit|default:"—" }} / {{ t.profit_book_qty|default:"all" }}</td>
+        <td class="{% if t.mark_pl >= 0 %}text-success{% else %}text-danger{% endif %}">
+          ₹{{ t.mark_pl|floatformat:2 }}
+          <div class="small">{{ t.mark_pl_pct|floatformat:2 }}%</div>
+        </td>
+        <td>{{ t.get_source_display }}</td>
+        <td class="small">{{ t.order_id }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="11" class="text-muted">No orders yet. Approve a status-8 name on Review.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

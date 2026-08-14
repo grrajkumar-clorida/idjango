@@ -34,15 +34,16 @@ class Command(BaseCommand):
         
         # Execute orders
         if not monitor_only:
-            self.stdout.write('Executing orders for status 8 stocks...')
+            self.stdout.write('Queue status-8 reviews and place approved orders...')
             executor = OrderExecutor()
             order_results = executor.execute_orders_for_status_8()
             
             self.stdout.write(
                 self.style.SUCCESS(
-                    f"Orders: {order_results['executed']} executed, "
-                    f"{order_results['skipped']} skipped, "
-                    f"{order_results['failed']} failed"
+                    f"Queued: {order_results.get('queued', 0)}, "
+                    f"executed: {order_results.get('executed', 0)}, "
+                    f"skipped: {order_results.get('skipped', 0)}, "
+                    f"failed: {order_results.get('failed', 0)}"
                 )
             )
             

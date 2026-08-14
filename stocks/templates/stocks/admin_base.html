@@ -158,6 +158,24 @@
         </div>
         <ul class="nav flex-column mt-3">
             <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'desk_review' %}active{% endif %}"
+                   href="{% url 'desk_review' %}">
+                    <i class="fas fa-user-check mr-2"></i> Review (status 8)
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'desk_orders' %}active{% endif %}"
+                   href="{% url 'desk_orders' %}">
+                    <i class="fas fa-receipt mr-2"></i> Orders
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'desk_positions' %}active{% endif %}"
+                   href="{% url 'desk_positions' %}">
+                    <i class="fas fa-briefcase mr-2"></i> Positions
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link {% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}" 
                    href="{% url 'admin_dashboard' %}">
                     <i class="fas fa-home mr-2"></i> Dashboard

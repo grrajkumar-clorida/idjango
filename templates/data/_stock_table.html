@@ -71,6 +71,7 @@
                     <b>Confirmation 50MA</b>
                 {% elif stock.status == 8 %}
                     <b>Order</b>
+                    <div><a href="{% url 'desk_review' %}">Review to buy</a></div>
                 {% elif stock.status == 9 %}
                     <b>Target 1</b>
                 {% elif stock.status == 10 %}
@@ -86,21 +87,11 @@
                 {% endif %}
             </td>
             <td>
-
-                <button class="btn btn-sm btn-success" hx-post="{% url 'place_order' %}" hx-vals='{
-                    "stock_code": "{{ stock.stock_code }}",
-                    "exchange": "NSE",
-                    "quantity": "1",
-                    "price": "{{ stock.price }}",
-                    "order_type": "MARKET",
-                    "product": "cash",
-                    "action": "BUY"
-                }'
-                hx-target="#order-msg-{{ stock.id }}"
-                hx-swap="outerHTML">
-                Buy
-            </button>
-            <div id="order-msg-{{ stock.id }}"></div>
+                {% if stock.status == 8 %}
+                <a class="btn btn-sm btn-success" href="{% url 'desk_review' %}">Review</a>
+                {% else %}
+                <span class="text-muted">—</span>
+                {% endif %}
             </td>
             <td>{{ stock.created_at|date:"d M y" }}</td>
         </tr>
