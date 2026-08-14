@@ -1,29 +1,11 @@
-from yourapp.utils.telegram_bot import send_telegram_message
+from django.core.management.base import BaseCommand
 
-def fetch_stock_data():
-    try:
-        send_telegram_message("🔄 Fetching stock data...")
+from infra.utils.telegram import send_telegram
 
-        # Your stock fetching logic here...
 
-        send_telegram_message("✅ Stock data fetched successfully.")
-    except Exception as e:
-        send_telegram_message(f"❌ Error fetching stock data: {e}")
+class Command(BaseCommand):
+    help = "Send a Telegram status ping using settings.TELEGRAM_* credentials"
 
-'''
-import requests
-
-BOT_TOKEN = "7404294331:AAGw8COsKG-1Aaz_8puYWW2HaQCfLgTEZjg"
-CHAT_ID = "7404294331"
-MESSAGE = "Hello, this is a test!"
-
-url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-payload = {
-    "chat_id": CHAT_ID,
-    "text": MESSAGE
-}
-
-response = requests.post(url, json=payload)
-print(response.json())  # Print response for debugging
-
-'''
+    def handle(self, *args, **kwargs):
+        send_telegram("Fetching stock data...")
+        self.stdout.write(self.style.SUCCESS("Status ping sent."))

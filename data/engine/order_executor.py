@@ -33,10 +33,7 @@ class OrderExecutor:
         # Get all stocks with status 8 that haven't been traded yet
         stocks_to_trade = Stocks50MA.objects.filter(status=8)
         
-        # Get live data map
-        live_data_map = {
-            spd.script: spd for spd in StockPriceData.objects.all()
-        }
+        live_data_map = StockPriceData.latest_by_stock_code()
         
         results = {
             'total': stocks_to_trade.count(),
@@ -47,12 +44,12 @@ class OrderExecutor:
         }
         
         for stock in stocks_to_trade:
-            live_data = live_data_map.get(stock.script)
+            live_data = live_data_map.get(stock.stock_code)
             
             if not live_data:
                 results['skipped'] += 1
                 results['details'].append({
-                    'script': stock.script,
+                    'script': stock.stock_code,
                     'status': 'skipped',
                     'reason': 'No live data available'
                 })
@@ -64,7 +61,7 @@ class OrderExecutor:
             if not entry_check['can_enter']:
                 results['skipped'] += 1
                 results['details'].append({
-                    'script': stock.script,
+                    'script': stock.stock_code,
                     'status': 'skipped',
                     'reason': entry_check['reason']
                 })
@@ -72,14 +69,14 @@ class OrderExecutor:
             
             # Check if already have open position
             existing_trade = LiveTrade.objects.filter(
-                stock_code=stock.script,
+                stock_code=stock.stock_code,
                 status="Executed"
             ).first()
             
             if existing_trade:
                 results['skipped'] += 1
                 results['details'].append({
-                    'script': stock.script,
+                    'script': stock.stock_code,
                     'status': 'skipped',
                     'reason': 'Already have open position'
                 })
@@ -94,7 +91,7 @@ class OrderExecutor:
                 results['failed'] += 1
             
             results['details'].append({
-                'script': stock.script,
+                'script': stock.stock_code,
                 'status': 'executed' if result['success'] else 'failed',
                 'reason': result.get('message', ''),
                 'order_id': result.get('order_id')
@@ -124,7 +121,7 @@ class OrderExecutor:
         order_value = entry_price * quantity
         if order_value > self.max_position_size:
             quantity = int(self.max_position_size / entry_price)
-            logger.warning(f"Reduced quantity for {stock.script} due to max position size")
+            logger.warning(f"Reduced quantity for {stock.stock_code} due to max position size")
         
         # Check if bought at bottom
         is_bottom_entry = self.strategy.is_bottom_entry(stock, live_data)
@@ -134,20 +131,20 @@ class OrderExecutor:
         
         if self.paper_trading:
             # Paper trading mode - simulate order
-            logger.info(f"PAPER TRADING: Would place BUY order for {stock.script}")
+            logger.info(f"PAPER TRADING: Would place BUY order for {stock.stock_code}")
             logger.info(f"  Quantity: {quantity}, Price: {entry_price}")
             logger.info(f"  Targets: T1={targets['target_1']:.2f}, T2={targets['target_2']:.2f}, T3={targets['target_3']:.2f}")
             
             # Create simulated trade record
             trade = LiveTrade.objects.create(
-                stock_code=stock.script,
+                stock_code=stock.stock_code,
                 exchange="NSE",
                 quantity=quantity,
                 order_type="MARKET",
                 price=Decimal(str(entry_price)),
                 action="BUY",
                 status="Executed",
-                order_id=f"PAPER_{stock.script}_{stock.id}",
+                order_id=f"PAPER_{stock.stock_code}_{stock.id}",
                 stop_loss=Decimal(str(entry_price * 0.95)),  # 5% stop loss
                 take_profit=Decimal(str(targets['target_2']))
             )
@@ -167,7 +164,7 @@ class OrderExecutor:
             # Live trading mode
             try:
                 response = self.breeze.place_order(
-                    stock_code=stock.script,
+                    stock_code=stock.stock_code,
                     exchange="NSE",
                     quantity=quantity,
                     order_type="MARKET",
@@ -181,7 +178,7 @@ class OrderExecutor:
                     
                     # Create trade record
                     trade = LiveTrade.objects.create(
-                        stock_code=stock.script,
+                        stock_code=stock.stock_code,
                         exchange="NSE",
                         quantity=quantity,
                         order_type="MARKET",
@@ -195,8 +192,8 @@ class OrderExecutor:
                     
                     # Also create Orders record
                     Orders.objects.create(
-                        ticker=stock.script,
-                        script=stock.script,
+                        ticker=stock.stock_code,
+                        script=stock.stock_code,
                         order_id=order_id,
                         position="BUY",
                         stop_loss=float(entry_price * 0.95),
@@ -221,7 +218,7 @@ class OrderExecutor:
                     stock.status = 8
                     stock.save()
                     
-                    logger.info(f"Order placed successfully for {stock.script}: {order_id}")
+                    logger.info(f"Order placed successfully for {stock.stock_code}: {order_id}")
                     
                     return {
                         'success': True,
@@ -232,7 +229,7 @@ class OrderExecutor:
                     }
                 else:
                     error_msg = response.get("ErrorMessage", "Unknown error")
-                    logger.error(f"Order failed for {stock.script}: {error_msg}")
+                    logger.error(f"Order failed for {stock.stock_code}: {error_msg}")
                     return {
                         'success': False,
                         'message': error_msg,
@@ -240,7 +237,7 @@ class OrderExecutor:
                     }
                     
             except Exception as e:
-                logger.error(f"Exception placing order for {stock.script}: {str(e)}")
+                logger.error(f"Exception placing order for {stock.stock_code}: {str(e)}")
                 return {
                     'success': False,
                     'message': f"Exception: {str(e)}",

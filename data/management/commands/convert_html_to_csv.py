@@ -7,26 +7,8 @@ from django.core.management.base import BaseCommand
 from data.models import Source #Stock50MA
 from django.conf import settings
 from datetime import datetime
-from data.tasks import calculate_50ma
-
-# Telegram Bot Token and Chat ID
-TELEGRAM_BOT_TOKEN = "7404294331:AAGw8COsKG-1Aaz_8puYWW2HaQCfLgTEZjg"
-TELEGRAM_CHAT_ID = "7404294331"
 
 logger = logging.getLogger(__name__)
-
-def send_telegram_message(message):
-    """Send status update to Telegram."""
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": message
-    }
-    try:
-        response = requests.post(url, json=payload)
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Failed to send Telegram message: {e}")
 
 
 class Command(BaseCommand):

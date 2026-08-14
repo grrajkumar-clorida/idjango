@@ -1,89 +1,71 @@
-#https://arabic-telethon.readthedocs.io/en/stable/extra/basic/telegram-client.html
-'''
+"""
+Standalone Halfbat Telegram listener.
 
-from pyrogram import Client, filters
+Credentials come from the environment — never commit api_id / api_hash.
 
-# Your Telegram API credentials
-api_id = 21457317  # Replace with your API ID
-api_hash = "b5d41bc198d61c4690b652fa94b46323" # Replace with your API hash
+  TELEGRAM_API_ID
+  TELEGRAM_API_HASH
+  TELEGRAM_SESSION_NAME  (optional, default Gr8_Rajkumar)
 
-# Create a Pyrogram client session
-app = Client("my_session", api_id=api_id, api_hash=api_hash)
-print(app.get_me())
-# Event handler to capture messages
-@app.on_message(filters.group)
-def group_message_handler(client, message):
-    print(f"[{message.chat.title}] {message.from_user.first_name}: {message.text}")
-
-# Start the app
-app.run()
-
-'''
-import re
+Run: python scraping.py
+"""
 import json
-from pyrogram import Client
-from telethon import TelegramClient, events, sync
+import os
+import re
+import sys
 
-api_id = 21457317
-api_hash = "b5d41bc198d61c4690b652fa94b46323" 
+from telethon import TelegramClient, events
+
 
 def get_halfbat(data):
-    '''
+    """
     What: Halfbat
     When: May 9, 2025 at 03:26PM
     Extra Data: {"value1":"half bat alert final","value2":"OLECTRA - 1099.1","value3":" @ 3:26 pm"}
-    '''
-    if re.search(r'What:\s*Halfbat', data, re.IGNORECASE):
-        # Extract JSON part after 'Extra Data:'
-        match = re.search(r'Extra Data:\s*({.*?})', data, re.DOTALL)
-        if match:
-            json_str = match.group(1)
-            try:
-                data = json.loads(json_str)
-                value2 = data.get("value2")
-                print("Extracted value2:", value2)
-            except json.JSONDecodeError:
-                print("Error: JSON is malformed or invalid.")
-        else:
-                print("Error: 'Extra Data' JSON not found.")
-    else:
+    """
+    if not re.search(r"What:\s*Halfbat", data, re.IGNORECASE):
         print("Message does not contain 'What: Halfbat'.")
+        return None
+
+    match = re.search(r"Extra Data:\s*({.*?})", data, re.DOTALL)
+    if not match:
+        print("Error: 'Extra Data' JSON not found.")
+        return None
+
+    try:
+        payload = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        print("Error: JSON is malformed or invalid.")
+        return None
+
+    value2 = payload.get("value2")
+    print("Extracted value2:", value2)
+    return value2
 
 
-#TelegramClient
-client = TelegramClient('Gr8_Rajkumar', api_id, api_hash)
-try:
+def main():
+    api_id = os.environ.get("TELEGRAM_API_ID", "").strip()
+    api_hash = os.environ.get("TELEGRAM_API_HASH", "").strip()
+    session_name = os.environ.get("TELEGRAM_SESSION_NAME", "Gr8_Rajkumar").strip()
+
+    if not api_id or not api_hash:
+        print(
+            "Set TELEGRAM_API_ID and TELEGRAM_API_HASH in the environment "
+            "(or idirect/.env). Do not hardcode them.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    client = TelegramClient(session_name, int(api_id), api_hash)
+
     @client.on(events.NewMessage)
     async def my_event_handler(event):
-        if "what" in event.raw_text.lower():
+        if "what" in (event.raw_text or "").lower():
             get_halfbat(event.raw_text)
-            await event.reply('Hi! T')
 
-    client.start()
-    client.run_until_disconnected()
-    #myself = client.get_me()
-    #    bhuvi = client.get_entity('Bhuviram24')
-
-    from telethon import utils
-    # for message in client.iter_messages('username', limit=10):
-    #     print('message !')
-    #     print(utils.get_display_name(message.sender), message.message)
-
-    # Dialogs are the conversations you have open
-    # for dialog in client.get_dialogs(limit=10):
-    #     print(dialog.name, dialog.draft.text)
-
-    # for dd in client.get_participants('Stocks'):
-    #     print(dd)
-
-    #print('---------------')
-    #print(client.get_messages('Stocks', 10))
+    with client:
+        client.run_until_disconnected()
 
 
-
-    # Default path is the working directory
-    #client.download_profile_photo('username')
-
-    
-finally:
-    client.disconnect()
+if __name__ == "__main__":
+    main()

@@ -137,6 +137,8 @@ BREEZE_SESSION = config("BREEZE_SESSION", default="")
 # Strip: .env typos like "GSHEET_ID = ..." or quoted values break lookups.
 GSHEET_KEY = str(config("GSHEET_KEY", default="") or "").strip().strip('"').strip("'")
 GSHEET_ID = str(config("GSHEET_ID", default="") or "").strip().strip('"').strip("'")
+GSHEET_APP_SCRIPT = str(config("GSHEET_APP_SCRIPT", default="") or "").strip()
+GSHEET_APP_SCRIPT_CMP = str(config("GSHEET_APP_SCRIPT_CMP", default="") or "").strip()
 SMA_API_KEY = config("SMA_API_KEY", default="")
 
 REDIS_HOST = config("REDIS_HOST", default="localhost")
@@ -171,6 +173,16 @@ MONITORING_ENABLED = config("MONITORING_ENABLED", default=True, cast=bool)
 ALERT_EMAIL_ENABLED = config("ALERT_EMAIL_ENABLED", default=True, cast=bool)
 
 CELERY_BEAT_SCHEDULE = {
+    # Path A ingest — ChartInk universe after close, then CMP + ICICI tickers
+    "ingest-50ma-eod": {
+        "task": "data.tasks.ingest_50ma_eod",
+        "schedule": crontab(minute=30, hour=16),
+    },
+    # Path A live CMPs so status 8 can appear during market hours
+    "ingest-price-data": {
+        "task": "data.tasks.ingest_price_data",
+        "schedule": crontab(minute="*/5", hour="9-15"),
+    },
     "execute-50ma-orders": {
         "task": "data.tasks.execute_50ma_orders",
         "schedule": crontab(minute="*/1", hour="9-15"),
@@ -183,6 +195,7 @@ CELERY_BEAT_SCHEDULE = {
         "task": "data.tasks.update_50ma_statuses",
         "schedule": crontab(minute="*/5", hour="9-15"),
     },
+    # Path B framework only — 50MA_Strategy is skipped inside these tasks
     "process-strategy-signals": {
         "task": "stocks.tasks.process_strategy_signals",
         "schedule": crontab(minute="*/1", hour="9-15"),

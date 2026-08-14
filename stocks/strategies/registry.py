@@ -47,16 +47,18 @@ class StrategyRegistry:
             Strategy instance or None
         """
         strategy_name = db_strategy.name
+
+        # Path A (data.tasks + 5-6% MA50Strategy) owns 50MA. Do not load the
+        # crossover adapter (1-5%) into Path B beat/registry.
+        from data.strategies.ma50_strategy import PATH_A_STRATEGY_NAME
+        if strategy_name == PATH_A_STRATEGY_NAME:
+            logger.info(
+                "Skipping %s in Path B registry — owned by data.tasks",
+                strategy_name,
+            )
+            return None
         
         # Map strategy names to their classes
-        if strategy_name == "50MA_Strategy":
-            from stocks.strategies.ma50_strategy_adapter import MA50StrategyAdapter
-            return MA50StrategyAdapter(
-                enabled=True,
-                **db_strategy.parameters
-            )
-        
-        # Add more strategy mappings here as they're implemented
         # elif strategy_name == "RSI_Strategy":
         #     from stocks.strategies.rsi_strategy import RSIStrategy
         #     return RSIStrategy(enabled=True, **db_strategy.parameters)

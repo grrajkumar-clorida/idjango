@@ -57,21 +57,28 @@ def status_list(output_type = "keys"):
 
 
 def safe_float(val):
-    try:
+    if val is None or val == "":
+        return 0.00
+    if isinstance(val, (int, float)):
         return float(val)
+    try:
+        cleaned = str(val).strip().replace(",", "").replace("%", "")
+        return float(cleaned)
     except (ValueError, TypeError):
         return 0.00
 
 def date_format(date):
-    cmp_date_str = date.strip()
-    try:
-        cmp_date = datetime.strptime(cmp_date_str, "%Y-%m-%d").date()
-    except ValueError:
-        cmp_date = None  # fallback
-
-    # Return
-    date
-    return cmp_date
+    if date is None:
+        return None
+    cmp_date_str = str(date).strip()
+    if not cmp_date_str:
+        return None
+    for fmt in ("%Y-%m-%d", "%d-%b-%Y", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(cmp_date_str, fmt).date()
+        except ValueError:
+            continue
+    return None
 
 def status_list():
     print('o')

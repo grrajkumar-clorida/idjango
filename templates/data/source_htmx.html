@@ -13,7 +13,7 @@
 <body>
     <h2>📈 Chartink Real-Time Dashboard</h2>
 
-    <form id="filter-form" hx-get="{% url 'chartink-dashboard' %}" hx-target="#stock-table" hx-swap="innerHTML">
+    <form id="filter-form" hx-get="{% url 'chartink-source' %}" hx-target="#stock-table" hx-swap="innerHTML">
         <label>Min % Change:
             <input type="number" name="min_chg" step="0.1" />
         </label>

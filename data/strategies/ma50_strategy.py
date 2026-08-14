@@ -1,25 +1,68 @@
 """
-50MA Strategy Implementation
+50MA Strategy Implementation (Path A — canonical)
+
 Strategy Logic:
 - Entry: Price reached above 50MA value AND CMP-50MA range is max 5-6% only
 - Exit: Price moves up 8-10% → book profit
 - Partial Exit: If buy price is at bottom → book 50%, remaining 50% for long-term holding
+
+The stocks.strategies.ma50_strategy_adapter crossover spec (1-5%) must not
+run in Celery beat; Path A owns this name via data.tasks.
 """
 from decimal import Decimal
 from typing import Dict, Optional
 from data.models import Stocks50MA, StockPriceData
+from infra.utils.infra import safe_float
+
+# Beat / registry skip this name so the Path B adapter cannot place 50MA orders.
+PATH_A_STRATEGY_NAME = "50MA_Strategy"
 
 
 class MA50Strategy:
     """50MA Trading Strategy"""
     
     def __init__(self):
-        self.name = "50MA_Strategy"
+        self.name = PATH_A_STRATEGY_NAME
         self.entry_range_min = 5.0  # Minimum % above 50MA
         self.entry_range_max = 6.0  # Maximum % above 50MA
         self.profit_target_min = 8.0  # Minimum profit % to book
         self.profit_target_max = 10.0  # Maximum profit % to book
         self.partial_exit_percent = 50.0  # % to exit if bought at bottom
+
+    def assign_pre_trade_status(self, stock: Stocks50MA, live_data: Optional[StockPriceData]) -> int:
+        """
+        Status for names that are not yet in a position (status < 8).
+
+        Most-specific bands first so 5-6% can become status 8 (Order).
+        """
+        if stock.status >= 8:
+            return stock.status
+        if not live_data:
+            return stock.status
+
+        cmp_price = safe_float(live_data.close_price)
+        cmp_50ma = safe_float(live_data.live50ma)
+        cmp_50pa = safe_float(live_data.cp50ma)
+        sma_price = safe_float(stock.stock_cmp)
+
+        if cmp_price <= 0 or cmp_50ma <= 0:
+            return stock.status
+
+        if cmp_price < cmp_50ma:
+            return 0  # Invalid — below 50MA
+        if cmp_50pa > self.entry_range_max:
+            return 1  # Over value
+        if self.entry_range_min <= cmp_50pa <= self.entry_range_max:
+            if sma_price and cmp_price > sma_price:
+                return 8  # Order — in 5-6% window and CMP above ChartInk CMP
+            return 7  # Confirmation — in window, waiting for CMP > SMA CMP
+        if 2.0 <= cmp_50pa < self.entry_range_min:
+            return 7  # Confirmation — approaching entry
+        if cmp_50pa < 1.0:
+            return 2  # Stoploss — too close to 50MA
+        if cmp_price > cmp_50ma:
+            return 6  # Entry / watching
+        return 4  # New
     
     def check_entry_condition(self, stock: Stocks50MA, live_data: StockPriceData) -> Dict:
         """
@@ -33,12 +76,12 @@ class MA50Strategy:
         Returns:
             Dict with 'can_enter': bool, 'reason': str, 'entry_price': float
         """
-        if not live_data or not live_data.live50ma:
+        if not live_data or live_data.live50ma is None:
             return {'can_enter': False, 'reason': 'No live data available'}
         
-        cmp_price = live_data.close_price
-        live_50ma = live_data.live50ma
-        cp50ma_percent = live_data.cp50ma or 0
+        cmp_price = safe_float(live_data.close_price)
+        live_50ma = safe_float(live_data.live50ma)
+        cp50ma_percent = safe_float(live_data.cp50ma)
         
         # Check if price is above 50MA
         if cmp_price <= live_50ma:
@@ -143,12 +186,10 @@ class MA50Strategy:
         
         Bottom entry: Price is close to 50MA (within 5-5.5%)
         """
-        if not live_data or not live_data.live50ma:
+        if not live_data or live_data.live50ma is None:
             return False
         
-        cmp_price = live_data.close_price
-        live_50ma = live_data.live50ma
-        cp50ma_percent = live_data.cp50ma or 0
+        cp50ma_percent = safe_float(live_data.cp50ma)
         
         # Bottom entry is when CP50MA% is at lower end (5-5.5%)
         return 5.0 <= cp50ma_percent <= 5.5
@@ -189,10 +230,10 @@ class MA50Strategy:
         if not live_data:
             return stock.status
         
-        current_price = live_data.close_price
-        entry = entry_price or stock.stock_cmp
+        current_price = safe_float(live_data.close_price)
+        entry = safe_float(entry_price if entry_price is not None else stock.stock_cmp)
         
-        if not entry or entry == 0:
+        if not entry:
             return stock.status
         
         # Calculate profit percentage

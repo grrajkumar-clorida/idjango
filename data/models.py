@@ -33,6 +33,15 @@ class StockPriceData(models.Model):
     def __str__(self):
         return f"{self.stock_code} - {self.ticker} - {self.date} - {self.close_price}"
 
+    @classmethod
+    def latest_by_stock_code(cls):
+        """Latest row per stock_code (ordering is -date). First write wins."""
+        mapping = {}
+        for row in cls.objects.order_by("-date", "-id"):
+            if row.stock_code and row.stock_code not in mapping:
+                mapping[row.stock_code] = row
+        return mapping
+
 class Stocks50MA(models.Model):
     stock_code = models.CharField(max_length=10, db_index=True)  # Ticker Code (e.g., TCS, INFY)
     ticker = models.CharField(max_length=50, null=True)

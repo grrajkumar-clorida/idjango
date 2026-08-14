@@ -1,8 +1,10 @@
 """
-Celery tasks for automated 50MA trading
+Celery tasks for automated 50MA trading (Path A)
 """
 from celery import shared_task
 import logging
+from django.core.management import call_command
+
 from data.engine.order_executor import OrderExecutor
 from data.engine.position_monitor import PositionMonitor
 
@@ -58,33 +60,26 @@ def update_50ma_statuses():
         from data.strategies.ma50_strategy import MA50Strategy
         
         strategy = MA50Strategy()
+        live_data_map = StockPriceData.latest_by_stock_code()
         
-        # Get live data map
-        live_data_map = {
-            spd.script: spd for spd in StockPriceData.objects.all()
-        }
-        
-        # Get all stocks with open positions (status >= 8)
         stocks_with_positions = Stocks50MA.objects.filter(status__gte=8)
         
         updated_count = 0
         
         for stock in stocks_with_positions:
-            live_data = live_data_map.get(stock.script)
+            live_data = live_data_map.get(stock.stock_code)
             
             if not live_data:
                 continue
             
-            # Get entry price from LiveTrade
             from stocks.models import LiveTrade
             trade = LiveTrade.objects.filter(
-                stock_code=stock.script,
+                stock_code=stock.stock_code,
                 status="Executed"
             ).first()
             
             entry_price = trade.price if trade else stock.stock_cmp
             
-            # Update status based on current price
             new_status = strategy.update_status_based_on_price(
                 stock,
                 live_data,
@@ -102,3 +97,34 @@ def update_50ma_statuses():
     except Exception as e:
         logger.error(f"Error updating 50MA statuses: {str(e)}")
         return {'error': str(e)}
+
+
+@shared_task(soft_time_limit=540, time_limit=600)
+def ingest_50ma_eod():
+    """
+    After-market Path A ingest: ChartInk → CMP sheet → ICICI tickers.
+    Scheduled ~16:30 IST.
+    """
+    try:
+        logger.info("EOD ingest: get_chartink50ma")
+        call_command("get_chartink50ma", "50ma")
+        logger.info("EOD ingest: fetch_price_data")
+        call_command("fetch_price_data")
+        logger.info("EOD ingest: get_tickers")
+        call_command("get_tickers")
+        logger.info("EOD ingest complete")
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"EOD 50MA ingest failed: {e}")
+        return {"error": str(e)}
+
+
+@shared_task(soft_time_limit=180, time_limit=240)
+def ingest_price_data():
+    """Refresh Google Finance CMPs and pre-trade statuses during market hours."""
+    try:
+        call_command("fetch_price_data")
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"fetch_price_data failed: {e}")
+        return {"error": str(e)}

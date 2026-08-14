@@ -1,34 +1,34 @@
-import datetime
-import time
-from django.core.management.base import BaseCommand
-from infra.utils.breeze_client import BreezeAPI
+from django.core.management.base import BaseCommand, CommandError
+
 from data.models import Stocks50MA
-from datetime import datetime, timedelta
-from django.utils import timezone
+from infra.utils.breeze_client import BreezeAPI
+
 
 class Command(BaseCommand):
-    help = "update Tricker as Idirect format value eg: IOC => INDOIL"
-    
+    help = "Update ticker to ICICI Direct isec code, e.g. IOC => INDOIL"
+
     def handle(self, *args, **kwargs):
-        self.stdout.write('Update Tricker as Idirect format value eg: IOC => INDOIL')
+        self.stdout.write("Update ticker as ICICI Direct format, e.g. IOC => INDOIL")
 
-    breeze = BreezeAPI()
-    breezeStatus = breeze.get_session_status()
+        breeze = BreezeAPI()
+        if not breeze.get_session_status():
+            raise CommandError("Breeze session is not active. Login via ?apisession= first.")
 
-    if breezeStatus is True:
-        print('Breeze active!')
-    else:
-    	print('Breeze Access Error!')
-    	exit()
+        self.stdout.write(self.style.SUCCESS("Breeze active."))
 
-    #stocks = StockPriceData.objects.all()
-    process_data = Stocks50MA.objects.all()#.filter(pre_data__isnull=True)
-    for icode in process_data:
-    	print("icode: ",icode)
-    	stock = icode.stock_code
-    	idsecCode = breeze.get_isec_stock_code(stock, "NSE")
-    	try:
-    		Stocks50MA.objects.filter(stock_code=stock).update(ticker=idsecCode)
-    	except icode.DoesNotExist:
-    		print('Error')
-    	#exit()
+        updated = 0
+        skipped = 0
+        for row in Stocks50MA.objects.exclude(stock_code__isnull=True).exclude(stock_code=""):
+            stock = row.stock_code
+            idsec_code = breeze.get_isec_stock_code(stock, "NSE")
+            if not idsec_code:
+                skipped += 1
+                self.stdout.write(self.style.WARNING(f"No isec code for {stock}"))
+                continue
+            Stocks50MA.objects.filter(stock_code=stock).update(ticker=idsec_code)
+            updated += 1
+            self.stdout.write(f"{stock} -> {idsec_code}")
+
+        self.stdout.write(self.style.SUCCESS(
+            f"Tickers updated: {updated}, skipped: {skipped}"
+        ))

@@ -18,6 +18,7 @@ from .monitoring.trade_monitor import TradeMonitor
 from .monitoring.performance_tracker import PerformanceTracker
 from .monitoring.alert_manager import AlertManager
 from infra.utils.breeze_client import BreezeAPI
+from data.strategies.ma50_strategy import PATH_A_STRATEGY_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -53,23 +54,19 @@ def process_strategy_signals():
         # Register all enabled strategies with executor
         for strategy in enabled_strategies:
             try:
-                # Check if already registered
+                # Path A owns 50MA (5-6% via data.tasks). Do not run the crossover adapter.
+                if strategy.name == PATH_A_STRATEGY_NAME:
+                    logger.info(
+                        "Skipping %s in process_strategy_signals — owned by data.tasks",
+                        strategy.name,
+                    )
+                    continue
+
                 if executor.get_strategy(strategy.name):
                     continue
                 
-                # Register strategy based on name
-                if strategy.name == "50MA_Strategy":
-                    from stocks.strategies.ma50_strategy_adapter import MA50StrategyAdapter
-                    strategy_instance = MA50StrategyAdapter(
-                        enabled=True,
-                        **strategy.parameters
-                    )
-                    executor.register_strategy(strategy_instance)
-                    logger.info(f"Registered 50MA strategy with executor")
-                else:
-                    # For other strategies, you can add more adapters here
-                    logger.warning(f"Strategy adapter not implemented: {strategy.name}")
-                    continue
+                logger.warning(f"Strategy adapter not implemented: {strategy.name}")
+                continue
             except Exception as e:
                 logger.error(f"Error registering strategy {strategy.name}: {e}")
                 continue
@@ -79,14 +76,11 @@ def process_strategy_signals():
         stocks_to_check = []
         
         # Check if 50MA strategy is enabled
-        ma50_strategy = Strategy.objects.filter(name="50MA_Strategy", enabled=True).first()
+        ma50_strategy = Strategy.objects.filter(name=PATH_A_STRATEGY_NAME, enabled=True).first()
         if ma50_strategy:
-            try:
-                strategy_instance = executor.get_strategy("50MA_Strategy")
-                if strategy_instance:
-                    stocks_to_check.extend(strategy_instance.get_stocks_to_check())
-            except Exception as e:
-                logger.warning(f"Could not get 50MA stocks: {e}")
+            logger.info(
+                "50MA universe is owned by Path A (data.tasks); not loading adapter stocks"
+            )
         
         # Fallback to default watchlist if no 50MA stocks
         if not stocks_to_check:
@@ -98,6 +92,9 @@ def process_strategy_signals():
         
         for strategy in enabled_strategies:
             try:
+                if strategy.name == PATH_A_STRATEGY_NAME:
+                    continue
+
                 # Get strategy instance from executor
                 strategy_instance = executor.get_strategy(strategy.name)
                 if not strategy_instance:
@@ -249,6 +246,9 @@ def execute_pending_signals():
         
         for signal in pending_signals:
             try:
+                if signal.strategy and signal.strategy.name == PATH_A_STRATEGY_NAME:
+                    continue
+
                 # Convert signal to order format
                 signal_dict = {
                     'action': signal.signal_type,

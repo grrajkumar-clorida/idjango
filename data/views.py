@@ -1,83 +1,74 @@
 from django.shortcuts import render
 from django.utils import timezone
-from django.conf import settings
-from django.db.models import Q
+
 from .models import Source, Stocks50MA, StockPriceData
-from .utils import get_google_sheet_data, filter_stock, update_google_sheet, place_order
-from django.forms.models import model_to_dict
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from .utils import place_order  # noqa: F401  — wired in data.urls
+
 
 def sma50_dashboard(request):
-	stocks = Stocks50MA.objects.all().filter(status__gt=3).filter(status__lt=13).order_by('-created_at', 'id')
+    stocks = Stocks50MA.objects.filter(status__gt=3, status__lt=13).order_by(
+        "-created_at", "id"
+    )
 
-	# Create a dictionary mapping script codes to live data
-	live_data_map = {
-		spd.stock_code: spd for spd in StockPriceData.objects.all()
-	}
-	#print(stocks)
-	# Attach CMP info dynamically to each stock object
-	for stock in stocks:
-		script = stock.ticker.upper()
-		#print("Stock.ticker: ",stock.stock_code)
+    min_chg = request.GET.get("min_chg")
+    max_chg = request.GET.get("max_chg")
+    status = request.GET.get("status")
+    today_only = request.GET.get("today") == "1"
 
-		live = live_data_map.get(stock.stock_code)
-		if live:
-			stock.live_price = live.close_price
-			stock.live_change = round(live.close_price - stock.stock_cmp, 2)
-			stock.sma50_range = round(live.close_price - stock.moving_average_50, 2)
-			stock.live50ma = live.live50ma
-			stock.cp50ma = live.cp50ma
-			stock.live21ma = live.live21ma
-			stock.live09ma = live.live9ma
-		else:
-			print('Nill Live Data')
+    if min_chg:
+        stocks = stocks.filter(percent_50ma__gte=float(min_chg))
+    if max_chg:
+        stocks = stocks.filter(percent_50ma__lte=float(max_chg))
+    if today_only:
+        today = timezone.now().date()
+        stocks = stocks.filter(created_at__date=today)
+    if status:
+        stocks = stocks.filter(status=status)
 
-	min_chg = request.GET.get("min_chg")
-	max_chg = request.GET.get("max_chg")
-	status = request.GET.get('status')
+    live_data_map = StockPriceData.latest_by_stock_code()
+    for stock in stocks:
+        live = live_data_map.get(stock.stock_code)
+        if not live:
+            continue
+        stock.live_price = live.close_price
+        if stock.stock_cmp is not None:
+            stock.live_change = round(live.close_price - stock.stock_cmp, 2)
+        if stock.moving_average_50 is not None:
+            stock.sma50_range = round(live.close_price - stock.moving_average_50, 2)
+        stock.live50ma = live.live50ma
+        stock.cp50ma = live.cp50ma
+        stock.live21ma = live.live21ma
+        stock.live09ma = live.live9ma
 
-	today_only = request.GET.get("today") == "1"
-	if min_chg:
-		stocks = stocks.filter(percent_50sma__gte=float(min_chg))
-	if max_chg:
-		stocks = stocks.filter(percent_50sma__lte=float(max_chg))
-	if today_only:
-		today = timezone.now().date()
-		stocks = stocks.filter(created_at__date=today)
-	if status:
-		stocks = stocks.filter(status=status)
-	if request.htmx:
-		return render(request, "data/_stock_table.html", {
-			"stocks": stocks,
-			"total_stocks": stocks.count(),	
-		})
-		
-	return render(request, "data/dashboard_htmx.html", {
+    context = {
         "stocks": stocks,
         "total_stocks": stocks.count(),
-    })
-    #return render(request, "dashboard_htmx.html", {"stocks": stocks})
+        "selected_status": status or "",
+        "min_chg": min_chg or "",
+        "max_chg": max_chg or "",
+        "today_only": today_only,
+    }
+    if request.htmx:
+        return render(request, "data/_stock_table.html", context)
+
+    return render(request, "data/dashboard_htmx.html", context)
 
 
 def chartink_dashboard(request):
-	stocks = Source.objects.all()
+    stocks = Source.objects.all()
 
-	min_chg = request.GET.get("min_chg")
-	max_chg = request.GET.get("max_chg")
-	today_only = request.GET.get("today") == "1"
-	if min_chg:
-		stocks = stocks.filter(chg_percent__gte=float(min_chg))
-	if max_chg:
-		stocks = stocks.filter(chg_percent__lte=float(max_chg))
-	if today_only:
-		today = timezone.now().date()
-		stocks = stocks.filter(created_at__date=today)
+    min_chg = request.GET.get("min_chg")
+    max_chg = request.GET.get("max_chg")
+    today_only = request.GET.get("today") == "1"
+    if min_chg:
+        stocks = stocks.filter(percent__gte=float(min_chg))
+    if max_chg:
+        stocks = stocks.filter(percent__lte=float(max_chg))
+    if today_only:
+        today = timezone.now().date()
+        stocks = stocks.filter(created_at__date=today)
 
-	if request.htmx:
-		return render(request, "data/_stock_table.html", {"stocks": stocks})
+    if request.htmx:
+        return render(request, "data/_stock_table.html", {"stocks": stocks})
 
-	return render(request, "data/source_htmx.html", {
-        "stocks": stocks,
-    })
-    #return render(request, "dashboard_htmx.html", {"stocks": stocks})
+    return render(request, "data/source_htmx.html", {"stocks": stocks})

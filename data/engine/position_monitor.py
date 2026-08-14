@@ -32,10 +32,7 @@ class PositionMonitor:
         # Get all open trades
         open_trades = LiveTrade.objects.filter(status="Executed")
         
-        # Get live data map
-        live_data_map = {
-            spd.script: spd for spd in StockPriceData.objects.all()
-        }
+        live_data_map = StockPriceData.latest_by_stock_code()
         
         results = {
             'total': open_trades.count(),
@@ -54,7 +51,7 @@ class PositionMonitor:
             entry_price = float(trade.price)
             
             # Get corresponding Stocks50MA record
-            stock = Stocks50MA.objects.filter(script=trade.stock_code).first()
+            stock = Stocks50MA.objects.filter(stock_code=trade.stock_code).first()
             
             if not stock:
                 continue
