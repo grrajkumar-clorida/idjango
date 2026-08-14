@@ -18,7 +18,7 @@ class Source(models.Model):
 
 class StockPriceData(models.Model):
     stock_code = models.CharField(max_length=10, db_index=True)  # e.g., TCS, INFY
-    script = models.CharField(max_length=50, null=True)
+    ticker = models.CharField(max_length=50, null=True)
     date = models.DateField(db_index=True, null=True)  # Trading Date
     close_price = models.FloatField()  # Closing Price
     live50ma = models.FloatField(blank=True, null=True)
@@ -31,11 +31,11 @@ class StockPriceData(models.Model):
         ordering = ['-date']
 
     def __str__(self):
-        return f"{self.stock_code} - {self.script} - {self.date} - {self.close_price}"
+        return f"{self.stock_code} - {self.ticker} - {self.date} - {self.close_price}"
 
 class Stocks50MA(models.Model):
     stock_code = models.CharField(max_length=10, db_index=True)  # Ticker Code (e.g., TCS, INFY)
-    script = models.CharField(max_length=50, null=True)
+    ticker = models.CharField(max_length=50, null=True)
     date = models.DateField(db_index=True, blank=True, null=True)  # Date of the MA calculation
     moving_average_50 = models.FloatField()  # 50-Day Moving Average value
     moving_average_20 = models.FloatField(blank=True, null=True)  # 21-Day Moving Average value
@@ -62,7 +62,7 @@ class Stocks50MA(models.Model):
         ordering = ['-date']  # Latest records first
     
     def __str__(self):
-        return f" {self.script} - CMP:{self.stock_cmp} - 50MA:{self.moving_average_50} - Status {self.status}"
+        return f" {self.ticker} - CMP:{self.stock_cmp} - 50MA:{self.moving_average_50} - Status {self.status}"
 
 class Stockhalfbat(models.Model):
     stock_code = models.CharField(max_length=10, null=True, db_index=True)

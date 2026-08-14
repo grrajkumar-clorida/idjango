@@ -1,11 +1,9 @@
 {% load humanize %}
-<p>Total Stocks Table: {{ total_stocks }}</p>
 <table id="stock-table" class="display table table-bordered table-striped table-hover">
     <thead>
         <tr>
             <th>Id</th>
-            <th>Stock Code</th>
-            <!-- <th>Name</th> -->
+            <th>Tricker</th>
             <th colspan="2">SMA: value | Range | %</th>
             <th colspan="1">SMA</th>
             <!-- <th colspan="2"> 50SMA In %</th>
@@ -21,16 +19,16 @@
         <tr>
             <td>{{ stock.id }}</td>
             <td>
-                <a href="https://in.tradingview.com/chart/?symbol=NSE%3A{{stock.script}}" name="script" title="{{ stock.name}}" target="_blank">{{ stock.script }}</a> {{stock.stock_code}}
+                <a href="https://in.tradingview.com/chart/?symbol=NSE%3A{{stock.stock_code}}" name="ticker" title="{{ stock.name}}" target="_blank">{{ stock.stock_code }}</a> 
+                <span class="isectick" onclick="copyTicker(this)">{{stock.ticker}}</span>
                 <p>Price: {{ stock.stock_cmp }}</p>
             </td>
-            <!-- <td>{{ stock.name}}</td> -->
             <td colspan="2">                
                 <p>50 : {{ stock.moving_average_50 }} | {{ stock.range_50ma }} | {{ stock.percent_50ma }} </p>
                 <p>20 : {{ stock.moving_average_20 }} | {{ stock.range_20ma }} | {{ stock.percent_20ma }} </p>
                 <p>09 : {{ stock.moving_average_09 }} | {{ stock.range_09ma }} | {{ stock.percent_09ma }} </p>
             </td>
-            <td> 
+            <td>
                 <p>50MA: {{ stock.live50ma }} | {{ stock.cp50ma }} | {{ stock.cp50ma }} </p>
                 <p>9-20MA: {{ stock.live21ma }} | {{ stock.live09ma }}</p>
                 <p>{{ stock.live_price }} | {{stock.live_change}} | {{ stock.live921 }}  </p>
@@ -46,7 +44,7 @@
                     {% if stock.cp50ma > 6 %}
                         <span>CP > 10%</span>
                     {% else %}
-                        <span style="color:green;">Valid CP 50</span>
+                        <span style="color:green;">Valid 50</span>
                     {% endif %}
                 {% elif stock.percent_50ma > 6 %}
                     <span style="color:red;">Over Value</span>
@@ -113,3 +111,9 @@
         {% endfor %}
     </tbody>
 </table>
+<script>
+    function copyTicker(el) {
+    navigator.clipboard.writeText(el.innerText);
+    alert('Copied: ' + el.innerText);
+}
+</script>

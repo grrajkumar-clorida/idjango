@@ -2,7 +2,7 @@
 Fetch symbols from any ChartInk screener, then (for configured screeners)
 run the same post-steps as chartink.py:
 
-  1. Scrape ChartInk (Copy → symbols / table fallback)
+  1. Scrape ChartInk results table (with pagination)
   2. Update Google Finance stock column
   3. Trigger Google Apps Script (GSHEET_APP_SCRIPT)
   4. Read SMA sheet from Google Sheets (retry)
@@ -31,11 +31,6 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-
-try:
-    import pyperclip
-except ImportError:
-    pyperclip = None
 
 # Named screeners — add new keys here for other ChartInk pages
 SCREENERS = {
@@ -289,11 +284,8 @@ class Command(BaseCommand):
     def _trigger_apps_script(self, apps_script_env):
         """Trigger Google Apps Script if configured in .env."""
         env_name = apps_script_env or "GSHEET_APP_SCRIPT"
-        script_url = ""
-        # Prefer process/env via settings BASE_DIR idirect/.env (tolerant parse)
         env_map = self._load_env_file(Path(settings.BASE_DIR) / "idirect" / ".env")
-        if env_name:
-            script_url = (env_map.get(env_name) or "").strip()
+        script_url = (env_map.get(env_name) or "").strip() if env_name else ""
         if not script_url:
             self.stdout.write(self.style.WARNING(
                 f"{env_name or 'GSHEET_APP_SCRIPT'} not configured — skipping Apps Script. "
@@ -326,8 +318,6 @@ class Command(BaseCommand):
         """Step 3: Read SMA/result sheet via Sheets API with retries."""
         from infra.utils.gfinance import get_gfinance_data
 
-        # Prefer Django settings (idirect/.env via RepositoryEnv).
-        # Also fall back to parsing idirect/.env with tolerant KEY = value spacing.
         spreadsheet_id = str(getattr(settings, "GSHEET_ID", "") or "").strip()
         api_key = str(getattr(settings, "GSHEET_KEY", "") or "").strip()
 
@@ -356,7 +346,6 @@ class Command(BaseCommand):
                     f"\nStep 3: Fetching '{sheet_name}' from Google Sheets "
                     f"(attempt {attempt}/{max_retries})..."
                 )
-                # get_gfinance_data already performs the HTTP GET and returns JSON
                 gsheet_data = get_gfinance_data(spreadsheet_id, sheet_name, api_key)
                 if not gsheet_data:
                     raise RuntimeError("get_gfinance_data returned empty")
@@ -442,22 +431,47 @@ class Command(BaseCommand):
                 continue
 
             row_dict = dict(zip(headers, row))
-            script = row_dict.get("Stock")
-            if not script:
+            ticker = row_dict.get("Stock")
+            if not ticker:
                 continue
 
-            script = script.strip().upper()
-            stock_code = script
+            ticker = ticker.strip().upper()
+            stock_code = ticker
 
-            if new_stock_set and script not in new_stock_set:
+            if new_stock_set and ticker not in new_stock_set:
                 continue
 
-            is_new_stock = script in new_stock_set if new_stock_set else False
+            is_new_stock = ticker in new_stock_set if new_stock_set else False
 
             try:
+                # unique_together = (stock_code, date) — always match on stock_code too
                 obj = Stocks50MA.objects.filter(
-                    Q(script__iexact=script) | Q(stock_code__iexact=stock_code)
+                    Q(ticker__iexact=ticker) | Q(stock_code__iexact=stock_code)
                 ).order_by("-date", "-created_at").first()
+
+                # Prefer today's row if one already exists for this stock_code
+                today_obj = Stocks50MA.objects.filter(
+                    stock_code__iexact=stock_code, date=today
+                ).first()
+                if today_obj:
+                    obj = today_obj
+
+                fields = {
+                    "name": row_dict.get("Name"),
+                    "stock_cmp": safe_float(row_dict.get("CMP")),
+                    "moving_average_50": safe_float(row_dict.get("50MA")),
+                    "moving_average_20": safe_float(row_dict.get("20MA")),
+                    "moving_average_09": safe_float(row_dict.get("09MA")),
+                    "range_50ma": safe_float(row_dict.get("Range 50MA")),
+                    "range_20ma": safe_float(row_dict.get("Range 20MA")),
+                    "range_09ma": safe_float(row_dict.get("Range 09MA")),
+                    "percent_50ma": safe_float(row_dict.get("Percent 50MA")),
+                    "percent_20ma": safe_float(row_dict.get("Percent 20MA")),
+                    "percent_09ma": safe_float(row_dict.get("Percent 09MA")),
+                    "target_1": safe_float(row_dict.get("Target 1")),
+                    "target_2": safe_float(row_dict.get("Target 2")),
+                    "cmp_date": date_format(row_dict.get("Trad Date")),
+                }
 
                 if obj:
                     backup_entry = {
@@ -472,64 +486,47 @@ class Command(BaseCommand):
                         obj.pre_data = []
                     obj.pre_data.append(backup_entry)
 
-                    obj.name = row_dict.get("Name")
-                    obj.stock_cmp = safe_float(row_dict.get("CMP"))
-                    obj.moving_average_50 = safe_float(row_dict.get("50MA"))
-                    obj.moving_average_20 = safe_float(row_dict.get("20MA"))
-                    obj.moving_average_09 = safe_float(row_dict.get("09MA"))
-                    obj.range_50ma = safe_float(row_dict.get("Range 50MA"))
-                    obj.range_20ma = safe_float(row_dict.get("Range 20MA"))
-                    obj.range_09ma = safe_float(row_dict.get("Range 09MA"))
-                    obj.percent_50ma = safe_float(row_dict.get("Percent 50MA"))
-                    obj.percent_20ma = safe_float(row_dict.get("Percent 20MA"))
-                    obj.percent_09ma = safe_float(row_dict.get("Percent 09MA"))
-                    obj.target_1 = safe_float(row_dict.get("Target 1"))
-                    obj.target_2 = safe_float(row_dict.get("Target 2"))
-                    obj.cmp_date = date_format(row_dict.get("Trad Date"))
+                    for key, value in fields.items():
+                        setattr(obj, key, value)
+                    if not obj.stock_code:
+                        obj.stock_code = stock_code
+                    if not obj.ticker:
+                        obj.ticker = ticker
                     obj.status = 5
+                    # Only move date to today when it won't violate unique (stock_code, date)
                     if is_new_stock and (not obj.date or obj.date < today):
-                        obj.date = today
+                        if not Stocks50MA.objects.filter(
+                            stock_code__iexact=stock_code, date=today
+                        ).exclude(pk=obj.pk).exists():
+                            obj.date = today
                     obj.save()
                     updated_count += 1
                     if is_new_stock:
-                        processed_new_stocks.add(script)
-                    self.stdout.write(f"Updated: {script} (ID {obj.id}, status=5)")
+                        processed_new_stocks.add(ticker)
+                    self.stdout.write(f"Updated: {ticker} (ID {obj.id}, status=5)")
                 else:
                     Stocks50MA.objects.create(
                         stock_code=stock_code,
-                        script=script,
+                        ticker=ticker,
                         date=today,
-                        name=row_dict.get("Name"),
-                        stock_cmp=safe_float(row_dict.get("CMP")),
-                        moving_average_50=safe_float(row_dict.get("50MA")),
-                        moving_average_20=safe_float(row_dict.get("20MA")),
-                        moving_average_09=safe_float(row_dict.get("09MA")),
-                        range_50ma=safe_float(row_dict.get("Range 50MA")),
-                        range_20ma=safe_float(row_dict.get("Range 20MA")),
-                        range_09ma=safe_float(row_dict.get("Range 09MA")),
-                        percent_50ma=safe_float(row_dict.get("Percent 50MA")),
-                        percent_20ma=safe_float(row_dict.get("Percent 20MA")),
-                        percent_09ma=safe_float(row_dict.get("Percent 09MA")),
-                        target_1=safe_float(row_dict.get("Target 1")),
-                        target_2=safe_float(row_dict.get("Target 2")),
-                        cmp_date=date_format(row_dict.get("Trad Date")),
                         status=4,
+                        **fields,
                     )
                     created_count += 1
-                    processed_new_stocks.add(script)
+                    processed_new_stocks.add(ticker)
                     self.stdout.write(self.style.SUCCESS(
-                        f"Created: {script} (status=4)"
+                        f"Created: {ticker} (status=4)"
                     ))
 
                 bot_txt += (
                     f"| {str(row_dict.get('Sno', '')).ljust(6)}"
-                    f"| {script.ljust(22)}"
+                    f"| {ticker.ljust(22)}"
                     f"| {str(row_dict.get('CMP', '')).ljust(7)}"
                     f"| {str(row_dict.get('50MA', '')).ljust(7)}"
                     f"| {str(row_dict.get('Percent 50MA', '')).ljust(10)}|\n"
                 )
             except Exception as exc:
-                self.stdout.write(self.style.ERROR(f"Error processing {script}: {exc}"))
+                self.stdout.write(self.style.ERROR(f"Error processing {ticker}: {exc}"))
                 continue
 
         bot_txt += "+--------+----------------------+--------+--------+------------+\n"
@@ -586,10 +583,6 @@ class Command(BaseCommand):
         )
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option("useAutomationExtension", False)
-        options.add_experimental_option(
-            "prefs",
-            {"profile.default_content_setting_values.clipboard": 1},
-        )
 
         driver = webdriver.Chrome(options=options)
         driver.execute_cdp_cmd(
@@ -598,25 +591,6 @@ class Command(BaseCommand):
                 "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
             },
         )
-
-        for perms in (
-            ["clipboardRead", "clipboardWrite"],
-            ["clipboard-read", "clipboard-write"],
-        ):
-            try:
-                driver.execute_cdp_cmd(
-                    "Browser.grantPermissions",
-                    {"origin": "https://chartink.com", "permissions": perms},
-                )
-                self.stdout.write(f"Granted clipboard permissions: {perms}")
-                break
-            except Exception:
-                continue
-        else:
-            self.stdout.write(self.style.WARNING(
-                "Clipboard CDP permission not granted — will use table fallback if needed"
-            ))
-
         return driver
 
     def _screenshot(self, driver, name, enabled=True):
@@ -632,6 +606,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(f"Screenshot failed: {exc}"))
 
     def _scrape_symbols(self, driver, url, prefix="chartink", save_screenshots=True):
+        """Load screener page and read symbols from the results table."""
         wait = WebDriverWait(driver, 40)
         driver.get(url)
         self.stdout.write("Waiting for scan results...")
@@ -649,187 +624,7 @@ class Command(BaseCommand):
 
         time.sleep(2)
         self._screenshot(driver, f"{prefix}_01_loaded.png", save_screenshots)
-
-        copy_btn = self._find_copy_button(driver, wait)
-        if not copy_btn:
-            self.stdout.write(self.style.WARNING("Copy button not found — table fallback"))
-            return self._symbols_from_table(driver)
-
-        driver.execute_script(
-            "arguments[0].scrollIntoView({block: 'center'});", copy_btn
-        )
-        time.sleep(0.5)
-        try:
-            copy_btn.click()
-        except Exception:
-            driver.execute_script("arguments[0].click();", copy_btn)
-        self.stdout.write("Clicked Copy button")
-        time.sleep(1)
-        self._screenshot(driver, f"{prefix}_02_after_copy.png", save_screenshots)
-
-        symbols_btn = self._find_symbols_option(driver, wait)
-        if not symbols_btn:
-            self.stdout.write(self.style.WARNING(
-                "Copy symbols option not found — table fallback"
-            ))
-            return self._symbols_from_table(driver)
-
-        try:
-            symbols_btn.click()
-        except Exception:
-            driver.execute_script("arguments[0].click();", symbols_btn)
-        self.stdout.write("Clicked Copy symbols")
-        time.sleep(1.5)
-        self._screenshot(driver, f"{prefix}_03_after_symbols.png", save_screenshots)
-
-        clipboard_text = self._read_clipboard(driver)
-        symbols = self._parse_symbols(clipboard_text)
-        if symbols:
-            self.stdout.write(self.style.SUCCESS(
-                f"Got {len(symbols)} symbols from clipboard"
-            ))
-            return symbols
-
-        self.stdout.write(self.style.WARNING(
-            "Clipboard empty/unavailable — falling back to results table"
-        ))
         return self._symbols_from_table(driver)
-
-    def _find_copy_button(self, driver, wait):
-        selectors = [
-            (By.CSS_SELECTOR, 'button[aria-label="Copy"]'),
-            (By.XPATH, '//button[@aria-label="Copy"]'),
-            (By.XPATH, '//button[.//span[normalize-space()="Copy"]]'),
-            (By.XPATH, '//button[contains(@aria-controls, "action-button-submenu")]'),
-            (By.XPATH, '//*[self::button or self::div][contains(., "Copy") and '
-                       '(@aria-label="Copy" or contains(@class, "secondary-button"))]'),
-        ]
-        for by, sel in selectors:
-            try:
-                el = wait.until(EC.element_to_be_clickable((by, sel)))
-                if el:
-                    self.stdout.write(f"Found Copy via: {sel}")
-                    return el
-            except TimeoutException:
-                continue
-            except Exception:
-                continue
-
-        for el in driver.find_elements(By.XPATH, "//button|//div|//span"):
-            try:
-                if (el.text or "").strip() == "Copy" and el.is_displayed():
-                    self.stdout.write("Found Copy via text search")
-                    return el
-            except Exception:
-                continue
-        return None
-
-    def _find_symbols_option(self, driver, wait):
-        selectors = [
-            (By.CSS_SELECTOR, 'button[aria-label="Copy symbols"]'),
-            (By.XPATH, '//button[@aria-label="Copy symbols"]'),
-            (By.XPATH, '//button[.//span[contains(translate(normalize-space(.),'
-                       '"SYMBOLS","symbols"),"symbols")]]'),
-            (By.XPATH, '//*[@role="group" and contains(@aria-label, "Copy options")]'
-                       '//button[contains(@aria-label, "symbol") or '
-                       './/span[contains(translate(normalize-space(.),'
-                       '"SYMBOLS","symbols"),"symbols")]]'),
-            (By.XPATH, '//span[contains(@class, "sm:inline") and '
-                       'contains(translate(normalize-space(.),"SYMBOLS","symbols"),"symbols")]'
-                       '/ancestor::button[1]'),
-        ]
-        for by, sel in selectors:
-            try:
-                el = wait.until(EC.element_to_be_clickable((by, sel)))
-                if el:
-                    self.stdout.write(f"Found symbols option via: {sel[:80]}")
-                    return el
-            except TimeoutException:
-                continue
-            except Exception:
-                continue
-
-        for el in driver.find_elements(
-            By.CSS_SELECTOR, '[role="group"][aria-label*="Copy"] button, button'
-        ):
-            try:
-                label = (el.get_attribute("aria-label") or "").lower()
-                text = (el.text or "").strip().lower()
-                if "symbol" in label or text == "symbols":
-                    if el.is_displayed():
-                        self.stdout.write("Found symbols option via text search")
-                        return el
-            except Exception:
-                continue
-        return None
-
-    def _read_clipboard(self, driver):
-        try:
-            text = driver.execute_async_script(
-                """
-                const done = arguments[0];
-                navigator.clipboard.readText()
-                  .then(t => done(t || ''))
-                  .catch(() => done(''));
-                """
-            )
-            if text and text.strip():
-                self.stdout.write(f"Clipboard (JS) length={len(text)}")
-                return text
-        except Exception as exc:
-            self.stdout.write(self.style.WARNING(f"JS clipboard.readText failed: {exc}"))
-
-        if pyperclip is not None:
-            try:
-                text = pyperclip.paste() or ""
-                if text.strip():
-                    self.stdout.write(f"Clipboard (pyperclip) length={len(text)}")
-                    return text
-            except Exception as exc:
-                self.stdout.write(self.style.WARNING(f"pyperclip failed: {exc}"))
-        else:
-            self.stdout.write(self.style.WARNING("pyperclip not installed"))
-
-        return ""
-
-    def _parse_symbols(self, text):
-        if not text or not text.strip():
-            return []
-
-        raw = text.strip()
-        parts = []
-        if "\n" in raw:
-            parts = [p.strip() for p in raw.splitlines() if p.strip()]
-        elif "," in raw:
-            parts = [p.strip() for p in raw.split(",") if p.strip()]
-        elif "\t" in raw:
-            for line in raw.splitlines():
-                cols = [c.strip() for c in line.split("\t") if c.strip()]
-                for col in cols:
-                    if re.fullmatch(r"[A-Za-z0-9-]{2,20}", col) and col.isupper():
-                        parts.append(col)
-                        break
-        else:
-            parts = [raw]
-
-        symbols = []
-        seen = set()
-        skip = {"SYMBOL", "SYMBOLS", "STOCK", "NAME", "SR", "SR.", "CLOSE", "VOLUME"}
-        for part in parts:
-            token = part
-            if "\t" in part or " " in part:
-                for col in re.split(r"[\t, ]+", part):
-                    col = col.strip()
-                    if re.fullmatch(r"[A-Za-z][A-Za-z0-9-]{1,19}", col) and col.upper() == col:
-                        token = col
-                        break
-            sym = re.sub(r"[^A-Za-z0-9-]", "", token).upper()
-            if not sym or sym in skip or len(sym) < 2 or len(sym) > 20:
-                continue
-            if sym not in seen:
-                seen.add(sym)
-                symbols.append(sym)
-        return symbols
 
     def _symbols_from_table(self, driver):
         """Read Symbol column from table.scan-results-table, with pagination."""

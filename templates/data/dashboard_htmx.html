@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
 {% block title %}
-    📊 50 Smart Moving Average Dashboard
+    📊 50MA - Smart Moving Average Dashboard
 {% endblock %}
 
 {% block content %}
-    <h2>📈 Smart Moving Average 50 Real-Time Dashboard</h2>
+    <h2>📈 Smart Moving Average 50MA Real-Time Dashboard</h2>
 
     <form id="sma50-form" hx-get="{% url 'sma50-dashboard' %}" hx-target="#stock-table" hx-swap="innerHTML">
         <label>Min % Change:

@@ -20,7 +20,7 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         self.stdout.write(self.style.SUCCESS('Stocks latest prices Updated'))
     #script = 'JKLAKSHMI'
-    stock_list = Stocks50MA.objects.values_list('script', flat=True)
+    stock_list = Stocks50MA.objects.values_list('stock_code', flat=True)
     #stock_list = Stocks50MA.objects.filter(script=script).values_list('script', flat=True)
     print("Total Stocks of 50MA: ", len(stock_list))
     
@@ -55,7 +55,7 @@ class Command(BaseCommand):
         
         if(script):
             obj, created = StockPriceData.objects.update_or_create(
-                script = script,
+                stock_code = script,
                 defaults= {
                     "stock_code": script,
                     "close_price": safe_float(row_dict.get("CMP")),
@@ -79,13 +79,13 @@ for i in range(1):
     stocks_to_update = []
 
     for stock in Stocks50MA.objects.all():
-        live_data = sma_map.get(stock.script)
+        live_data = sma_map.get(stock.stock_code)
         
         if live_data.live50ma is None:
             continue  # No price data available, skip
 
         '''
-        cmp_price    - Live closing price
+        cmp_price    - Live closing price c
         cmp_21ma     - Live 21SMA
         cmp_50ma     - live 50SMA
         cmp_09ma     - Live 09SMA
@@ -129,9 +129,9 @@ for i in range(1):
         if stock.status < 8:
             if cmp_price < cmp_50ma:  # CMP below 50MA
                 stock.status = 0  # Invalid
-            elif cmp_50pa > 6:  # Over valued
+            elif cmp_50pa > 6:  # CMP more than 6%
                 stock.status = 1  # Over Value
-            elif cmp_50pa < 1.0:  # Below 50MA by more than 1%
+            elif cmp_50pa < 0.05:  # Below 50MA by more than 1%
                 stock.status = 2  # Stoploss
             elif 2.0 <= cmp_50pa <= 7.0:  # In confirmation range (2-7%)
                 stock.status = 7  # Confirmation - ready for entry check
@@ -142,7 +142,7 @@ for i in range(1):
             else:
                 stock.status = 4  # New/Update
         
-        print(f"Status: {stock.script} - c:{cmp_50ma} - sma:{sma_price} - p:{cmp_price} - %:{cmp_50pa} - status:{stock.status}")
+        print(f"Status: {stock.stock_code} - c:{cmp_50ma} - sma:{sma_price} - p:{cmp_price} - %:{cmp_50pa} - status:{stock.status}")
         stocks_to_update.append(stock)
 
     #print(stocks_to_update)

@@ -1,0 +1,155 @@
+30466133 - chanrt many times
+8804830 - New House
+527561984 0 Promotion
+7740969 - stuck money
+808342986  Bussiness
+5973564 - Student
+31792503 Hike
+15316063 - New car
+
+cd /srv/idjango
+
+# Test order execution
+docker compose --env-file idirect/.env exec idjango \  python manage.py auto_trade_50ma --orders-only
+
+# Test position monitoring
+docker compose --env-file idirect/.env exec idjango \  python manage.py auto_trade_50ma --monitor-only
+
+# Test both
+docker compose --env-file idirect/.env exec idjango \ python manage.py auto_trade_50ma
+
+docker compose --env-file idirect/.env exec -it idjango \
+  python manage.py createsuperuser
+
+
+========================
+docker exec -it idjango python manage.py update_breeze_session --session-key YOUR_APISESSION
+docker exec -it idjango python manage.py update_breeze_session --status
+docker exec idjango python manage.py shell -c "from coredata.utils.breeze_session import get_breeze_session; print(get_breeze_session() or '(empty)')"
+========================
+50MA
+  docker compose --env-file idirect/.env exec idjango python manage.py get_chartink50ma
+  python manage.py auto_trade_50ma - Auto Trading 50MA
+  python manage.py get_tickers 
+========================
+ '0 - Invalid', '1 - Over Value', '2 - Stoploss', '3 - Completed', '4 - New', '5 - Update',
+        '6 - Entry', '7 - Confirmation', '8 - Order', '9 - Target 1', '10 - Target 2', 
+        '11 - Target 3', '12 - Above T3', '13 - Altra'
+
+ITC
+w  - hold
+INDHOTEL
+ITCHOTEL
+Bajaj Auto - 
+TVS 
+KVB
+Indusand bank
+Yes Bank
+Fedral Bank
+IDFC
+ICICI Bank
+Spandana - 
+JSW - Volkwaken
+
+
+Hindu newspaper
+godraj
+tata cap - below 2 times book
+HDFC 
+icca
+cipla 20 pe
+infosys
+it index
+dr reddy
+nestle - usa
+
+
+50Ma
+PINELABS
+CAPILLARY - Entry
+TNPL - waiting
+ASHAPURMIN 
+DBL - confirm
+DELHIVERY - ABCD patten T1 =560. SL :400
+RSYSTEMS - Entry 
+
+RBL - Entry
+JYOTHYLAB - Entry
+JUBLFOOD - Entry
+ASHOKLEY
+CAMS
+EUREKAFORB
+SULA - Entry
+
+
+
+Pinelabs    161
+Ashapurmin  
+Delivery 
+Jyothylab
+Ashokley
+Cams
+Eurekafor
+Sula
+
+====================================
+MMulti Bagger Sticks
+
+💰 HOW TO INVEST IN THIS THEME (US Stocks & ETFs)
+This is a full value chain — and every layer is investable:
+GOOGL (Alphabet) – the company building the hub, cables, and AI stack
+NVDA (Nvidia) – GPUs that will fill these data centres; robot training platforms
+AVGO (Broadcom) – networking chips + custom AI accelerators
+GLW (Corning) – the fiber-optic cable itself
+ANET (Arista Networks) – data centre networking switches
+VRT (Vertiv) – cooling & power systems for gigawatt-scale campuses
+ETN (Eaton) – electrical infrastructure for AI power demand
+
+ETFs for diversified exposure:
+DTCR – Global X Data Center & Digital Infrastructure ETF
+SRVR – data centre & digital infrastructure REITs
+SMH – semiconductor leaders powering AI
+BOTZ / ROBO – robotics & AI (the end-users of this worker movement data)
+
+
+Multibagger screening Funnel
+5y Revenue CAGR >15% - Business must grow faster than the ecomnomy
+ROCE > 15% -> Capital deployed efficiently across the business
+ROE > 15% - Strong, sustainable retun to shareholders
+5Y Avg Net Profit Margin > 10% - profits consistent, not a one-off
+Debt/Equity <0.5 - Low debt = resilience in downturns
+Interst Coverage >5X - Earnings comfortably cover interset
+5Y EPS Gtowth >15% - pre-shareearnings reward shareholders
+
+
+==================================
+which industry high grow - find multibuger stock
+
+Uraon
+L&T  nucler inforam 
+BHCL
+HCC - power 
+MTIR
+BATA
+Bajaji electrcoic
+Whilpool
+happienstmind
+
+
+குலம் தரும் செல்வம் தந்திடும்*  அடியார் படு துயர் ஆயின எல்லாம்* 
+நிலம் தரம் செய்யும் நீள் விசும்பு அருளும்*  அருளொடு பெரு நிலம் அளிக்கும்* 
+வலம் தரும் மற்றும் தந்திடும்*  பெற்ற தாயினும் ஆயின செய்யும்* 
+நலம் தரும் சொல்லை நான் கண்டுகொண்டேன்*  நாராயணா என்னும் நாமம். (2)
+
+
+DATABASE_NAME=idjangoalgo
+DATABASE_USER=idjango_algogr8
+DATABASE_PASSWORD=UR$~Yn2se!mhDh%a+^t888
+DATABASE_HOST=idjango-mysql
+DATABASE_PORT=3306
+MYSQL_ROOT_PASSWORD=Rbynex888
+DATABASE_USE_SOCKET=False
+
+
+========================
+docker compose --env-file idirect/.env exec -it idjango-mysql   mysql -u idjango_algogr8 -p
