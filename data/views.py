@@ -13,13 +13,15 @@ def sma50_dashboard(request):
 
 	# Create a dictionary mapping script codes to live data
 	live_data_map = {
-		spd.script: spd for spd in StockPriceData.objects.all()
+		spd.stock_code: spd for spd in StockPriceData.objects.all()
 	}
 	#print(stocks)
 	# Attach CMP info dynamically to each stock object
 	for stock in stocks:
-		script = stock.script.upper()
-		live = live_data_map.get(stock.script)
+		script = stock.ticker.upper()
+		#print("Stock.ticker: ",stock.stock_code)
+
+		live = live_data_map.get(stock.stock_code)
 		if live:
 			stock.live_price = live.close_price
 			stock.live_change = round(live.close_price - stock.stock_cmp, 2)
@@ -28,6 +30,8 @@ def sma50_dashboard(request):
 			stock.cp50ma = live.cp50ma
 			stock.live21ma = live.live21ma
 			stock.live09ma = live.live9ma
+		else:
+			print('Nill Live Data')
 
 	min_chg = request.GET.get("min_chg")
 	max_chg = request.GET.get("max_chg")
