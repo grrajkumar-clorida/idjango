@@ -12,3 +12,6 @@ data/mysql/
 *.xlsx
 .DS_Store
 secrets/
+
+# Local notes (may contain secrets)
+_tips/Track.txt
