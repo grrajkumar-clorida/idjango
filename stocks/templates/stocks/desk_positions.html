@@ -57,10 +57,17 @@
   </form>
 </div>
 {% if missing_live %}
-<p class="small text-muted">
-  Live CMP comes from the 50MA price sheet. Tracked names that are not on that sheet show —.
-  Type <strong>Live CMP</strong> on the row and Save, or use Refresh (Breeze LTP).
-</p>
+<div class="alert alert-warning small">
+  <strong>{{ missing_live }}</strong> open name(s) have no live CMP (shown as —).
+  Live price comes from the Google Finance <code>marketPrice</code> sheet, which only
+  includes ChartInk 50MA symbols plus any open position already pushed by
+  <code>fetch_price_data</code>.
+  <ul class="mb-0 mt-2">
+    <li><strong>On the 50MA sheet?</strong> Wait for the 5-minute ingest, or click Refresh.</li>
+    <li><strong>Tracked / off-sheet (e.g. TATATECH)?</strong> Type <strong>Live CMP</strong> from TradingView or your broker and Save.</li>
+    <li><strong>Breeze session up?</strong> Refresh pulls LTP for missing names only.</li>
+  </ul>
+</div>
 {% endif %}
 
 <div class="table-responsive">
@@ -88,7 +95,12 @@
         </td>
         <td>{{ p.open_qty }} <span class="small text-muted">/ {{ p.quantity }}</span></td>
         <td>{{ p.entry_price|default:p.price }}</td>
-        <td>{{ p.live_price|default_if_none:"—" }}</td>
+        <td>
+          {{ p.live_price|default_if_none:"—" }}
+          {% if p.live_hint %}
+          <div class="small text-warning">{{ p.live_hint }}</div>
+          {% endif %}
+        </td>
         <td class="{% if p.mark_pl >= 0 %}text-success{% else %}text-danger{% endif %}">
           ₹{{ p.mark_pl|floatformat:2 }}
           <div class="small">{{ p.mark_pl_pct|floatformat:2 }}%</div>
@@ -103,7 +115,7 @@
               <input class="form-control form-control-sm" type="number" step="0.05" name="stop_loss" value="{{ p.stop_loss|default_if_none:'' }}">
             </div>
             <div class="col-3">
-              <input class="form-control form-control-sm" type="number" step="0.05" name="profit_book_price" value="{{ p.profit_book_price|default:p.take_profit|default_if_none:'' }}" required>
+              <input class="form-control form-control-sm" type="number" step="0.05" name="profit_book_price" value="{{ p.profit_book_price|default:p.take_profit|default_if_none:'' }}" placeholder="book">
             </div>
             <div class="col-2">
               <input class="form-control form-control-sm" type="number" name="profit_book_qty" value="{{ p.profit_book_qty|default:p.open_qty }}" min="1">

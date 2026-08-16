@@ -158,6 +158,12 @@
         </div>
         <ul class="nav flex-column mt-3">
             <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'sma50-dashboard' or request.resolver_match.url_name == 'sma50-dashboard-page' %}active{% endif %}"
+                   href="{% url 'sma50-dashboard' %}">
+                    <i class="fas fa-wave-square mr-2"></i> 50MA
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link {% if request.resolver_match.url_name == 'desk_review' %}active{% endif %}"
                    href="{% url 'desk_review' %}">
                     <i class="fas fa-user-check mr-2"></i> Review (status 8)
@@ -182,7 +188,7 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if request.resolver_match.url_name == 'admin_strategies' %}active{% endif %}" 
+                <a class="nav-link {% if request.resolver_match.url_name == 'admin_strategies' or request.resolver_match.url_name == 'admin_strategy_detail' or request.resolver_match.url_name == 'admin_strategy_register' %}active{% endif %}" 
                    href="{% url 'admin_strategies' %}">
                     <i class="fas fa-cogs mr-2"></i> Strategies
                 </a>
@@ -227,6 +233,17 @@
                     <i class="fas fa-cog mr-2"></i> Django Admin
                 </a>
             </li>
+            <li class="nav-item mt-2">
+                {% if user.is_authenticated %}
+                <a class="nav-link" href="{% url 'logout' %}">
+                    <i class="fas fa-sign-out-alt mr-2"></i> Logout ({{ user.username }})
+                </a>
+                {% else %}
+                <a class="nav-link" href="{% url 'login' %}?next={{ request.path }}">
+                    <i class="fas fa-sign-in-alt mr-2"></i> Login
+                </a>
+                {% endif %}
+            </li>
         </ul>
     </nav>
     
@@ -262,7 +279,13 @@
                     <span class="badge badge-success mr-2">
                         <i class="fas fa-circle"></i> System Online
                     </span>
-                    <span class="text-muted" id="current-time" style="will-change: contents;">Time</span>
+                    <span class="text-muted mr-3" id="current-time" style="will-change: contents;">Time</span>
+                    {% if user.is_authenticated %}
+                    <span class="text-muted mr-2">{{ user.username }}</span>
+                    <a class="btn btn-sm btn-outline-secondary" href="{% url 'logout' %}">Logout</a>
+                    {% else %}
+                    <a class="btn btn-sm btn-primary" href="{% url 'login' %}?next={{ request.path }}">Login</a>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -275,6 +298,13 @@
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <!-- HTMX CSRF -->
+    <script>
+        document.body.addEventListener('htmx:configRequest', function (event) {
+            event.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
+        });
+    </script>
     
     <!-- Initialize Bootstrap tooltips -->
     <script>

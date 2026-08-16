@@ -12,20 +12,20 @@
         <div class="stat-card">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <button class="btn btn-sm btn-outline-primary" 
-                            hx-get="{% url 'admin_strategies' %}?status=all"
+                    <button class="btn btn-sm btn-outline-primary"
+                            hx-get="{% url 'admin_strategies_table' %}?status=all"
                             hx-target="#strategies-table"
                             hx-swap="innerHTML">
                         All
                     </button>
-                    <button class="btn btn-sm btn-outline-success" 
-                            hx-get="{% url 'admin_strategies' %}?status=enabled"
+                    <button class="btn btn-sm btn-outline-success"
+                            hx-get="{% url 'admin_strategies_table' %}?status=enabled"
                             hx-target="#strategies-table"
                             hx-swap="innerHTML">
                         Enabled
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary" 
-                            hx-get="{% url 'admin_strategies' %}?status=disabled"
+                    <button class="btn btn-sm btn-outline-secondary"
+                            hx-get="{% url 'admin_strategies_table' %}?status=disabled"
                             hx-target="#strategies-table"
                             hx-swap="innerHTML">
                         Disabled
@@ -45,7 +45,7 @@
 <div class="row">
     <div class="col-md-12">
         <div class="table-responsive" id="strategies-table"
-             hx-get="{% url 'admin_strategies_table' %}"
+             hx-get="{% url 'admin_strategies_table' %}?status={{ status_filter|default:'all' }}"
              hx-trigger="load, every 10s"
              hx-swap="innerHTML">
             <div class="text-center py-5">
@@ -56,16 +56,4 @@
         </div>
     </div>
 </div>
-
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    // Handle strategy enable/disable
-    document.body.addEventListener('htmx:afterSwap', function(event) {
-        if (event.detail.target.id === 'strategies-table') {
-            // Re-attach event listeners if needed
-        }
-    });
-</script>
 {% endblock %}
