@@ -215,6 +215,15 @@ class OrderExecutor:
             breeze_price = fill_price
 
         order_id = None
+        if not self.paper_trading and not getattr(settings, "TRADING_ENABLED", False):
+            review.last_error = "TRADING_ENABLED is off"
+            review.save(update_fields=["last_error", "updated_at"])
+            return {
+                "success": False,
+                "skipped": True,
+                "message": "TRADING_ENABLED is off — live Breeze place blocked",
+            }
+
         if self.paper_trading:
             order_id = f"PAPER_{review.stock_code}_{review.id}_{timezone.now().strftime('%H%M%S')}"
             logger.info(

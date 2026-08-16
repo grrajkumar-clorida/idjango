@@ -1,37 +1,66 @@
-{% extends "base.html" %}
+{% extends "stocks/admin_base.html" %}
 
-{% block title %}
-    📊 50MA - Smart Moving Average Dashboard
-{% endblock %}
+{% block title %}50MA{% endblock %}
+{% block page_title %}50MA universe{% endblock %}
+{% block page_subtitle %}ChartInk names with live CMP. Status 8 goes to Review — no auto-buy.{% endblock %}
 
 {% block content %}
-    <h2>📈 Smart Moving Average 50MA Real-Time Dashboard</h2>
+{% if messages %}
+<div class="mb-3">
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
+  {% endfor %}
+</div>
+{% endif %}
 
-    <form id="sma50-form" hx-get="{% url 'sma50-dashboard' %}" hx-target="#stock-table" hx-swap="innerHTML">
-        <label>Min % Change:
-            <input type="number" name="min_chg" step="0.1" />
-        </label>
-        <label>Max % Change:
-            <input type="number" name="max_chg" step="0.1" />
-        </label>
-        <label>
-            <input type="checkbox" name="today" value="1" /> Today
-        </label>
-        <label>Status:
-           {% load status_filters %}
-
-        <select name="status">
-            <option value="">-- All --</option>
-            {% status_list 'options' %}
-        </select>
-    </label>
-
-        <button type="submit">Apply Filters</button>
-        <!-- Reset Button -->
-    <a href="/data/" title="Reset">Reset</a>
-    </form>
-    <p>Total Stocks: {{ total_stocks }}</p>
-    <div id="stock-table">
-        {% include "data/_stock_table.html" %}
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="label">Names listed</div>
+      <div class="value text-primary">{{ total_stocks }}</div>
     </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="label">Status 8 (Order)</div>
+      <div class="value text-success">{{ status8_count }}</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="label">Status 7 (Confirm)</div>
+      <div class="value text-info">{{ status7_count }}</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="label">Live CMP (this page)</div>
+      <div class="value">{{ with_live }}</div>
+    </div>
+  </div>
+</div>
+
+<form class="form-inline mb-3" method="get" id="sma50-form"
+      hx-get="{% url 'sma50-dashboard' %}" hx-target="#stock-table" hx-swap="innerHTML" hx-push-url="true">
+  <select name="status" class="form-control mr-2 mb-2" onchange="this.form.requestSubmit()">
+    <option value="">All statuses</option>
+    {% for code, label in status_choices.items %}
+    <option value="{{ code }}" {% if selected_status == code|stringformat:"s" %}selected{% endif %}>{{ code }} — {{ label }}</option>
+    {% endfor %}
+  </select>
+  <input class="form-control mr-2 mb-2" name="search" value="{{ search }}" placeholder="TATATECH / name" style="width:10rem">
+  <input class="form-control mr-2 mb-2" type="number" step="0.1" name="min_chg" value="{{ min_chg }}" placeholder="Min %" style="width:5.5rem">
+  <input class="form-control mr-2 mb-2" type="number" step="0.1" name="max_chg" value="{{ max_chg }}" placeholder="Max %" style="width:5.5rem">
+  <div class="form-check mr-2 mb-2">
+    <input class="form-check-input" type="checkbox" name="today" value="1" id="today-only" {% if today_only %}checked{% endif %}>
+    <label class="form-check-label" for="today-only">Today</label>
+  </div>
+  <button class="btn btn-outline-secondary mr-2 mb-2" type="submit">Search</button>
+  <a class="btn btn-link mb-2" href="{% url 'sma50-dashboard' %}">Reset</a>
+  <a class="btn btn-outline-primary mb-2" href="{% url 'desk_review' %}">Review queue</a>
+</form>
+
+<div id="stock-table">
+  {% include "data/_stock_table.html" %}
+</div>
 {% endblock %}

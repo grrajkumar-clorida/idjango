@@ -111,6 +111,14 @@ TIME_ZONE = "Asia/Kolkata"
 USE_I18N = True
 USE_TZ = True
 
+# Beat crontabs (9–15, 16:30) are Indian market hours, not UTC.
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "desk_review"
+LOGOUT_REDIRECT_URL = "login"
+
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"

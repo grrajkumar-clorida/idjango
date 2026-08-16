@@ -93,9 +93,27 @@ class PositionMonitor:
         return results
 
     def _exit_plan(self, trade, current_price, entry_price, stock, live_data) -> Dict:
-        """Human TP first, then 50MA strategy bands."""
+        """Stop-loss first, then human TP, then 50MA strategy bands."""
         profit_percent = ((current_price - entry_price) / entry_price) * 100
         open_qty = trade.open_qty()
+
+        sl = trade.stop_loss
+        if sl and open_qty > 0:
+            sl = float(sl)
+            hit_sl = (
+                current_price <= sl
+                if getattr(trade, "action", "BUY") == "BUY"
+                else current_price >= sl
+            )
+            if hit_sl:
+                return {
+                    "should_exit": True,
+                    "exit_type": "full",
+                    "exit_percent": 100,
+                    "exit_qty": open_qty,
+                    "profit_percent": profit_percent,
+                    "reason": f"Stop loss at {sl}",
+                }
 
         tp_price = trade.profit_book_price or trade.take_profit
         if tp_price and current_price >= float(tp_price) and open_qty > 0:
@@ -145,6 +163,12 @@ class PositionMonitor:
 
         if exit_quantity <= 0:
             return {"success": False, "message": "Exit quantity is 0"}
+
+        if not self.paper_trading and not getattr(settings, "TRADING_ENABLED", False):
+            return {
+                "success": False,
+                "message": "TRADING_ENABLED is off — live exit blocked",
+            }
 
         if not self.paper_trading:
             try:

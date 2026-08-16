@@ -1,110 +1,132 @@
 {% load humanize %}
-<table id="stock-table" class="display table table-bordered table-striped table-hover">
+<div class="table-responsive">
+  <table class="table table-sm table-striped mb-0">
     <thead>
-        <tr>
-            <th>Id</th>
-            <th>Tricker</th>
-            <th colspan="2">SMA: value | Range | %</th>
-            <th colspan="1">SMA</th>
-            <!-- <th colspan="2"> 50SMA In %</th>
-            <th>Live Data</th> -->
-            <th>Note</th>
-            <th>Status</th>
-            <th>Trade</th>
-            <th>Date</th>
-        </tr>
+      <tr>
+        <th>Date</th>
+        <th>Stock</th>
+        <th>Sheet CMP</th>
+        <th>Live</th>
+        <th>Live 50MA / %</th>
+        <th>Sheet 50 / 20 / 9</th>
+        <th>Note</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
     </thead>
     <tbody>
-        {% for stock in stocks %}
-        <tr>
-            <td>{{ stock.id }}</td>
-            <td>
-                <a href="https://in.tradingview.com/chart/?symbol=NSE%3A{{stock.stock_code}}" name="ticker" title="{{ stock.name}}" target="_blank">{{ stock.stock_code }}</a> 
-                <span class="isectick" onclick="copyTicker(this)">{{stock.ticker}}</span>
-                <p>Price: {{ stock.stock_cmp }}</p>
-            </td>
-            <td colspan="2">                
-                <p>50 : {{ stock.moving_average_50 }} | {{ stock.range_50ma }} | {{ stock.percent_50ma }} </p>
-                <p>20 : {{ stock.moving_average_20 }} | {{ stock.range_20ma }} | {{ stock.percent_20ma }} </p>
-                <p>09 : {{ stock.moving_average_09 }} | {{ stock.range_09ma }} | {{ stock.percent_09ma }} </p>
-            </td>
-            <td>
-                <p>50MA: {{ stock.live50ma }} | {{ stock.cp50ma }} | {{ stock.cp50ma }} </p>
-                <p>9-20MA: {{ stock.live21ma }} | {{ stock.live09ma }}</p>
-                <p>{{ stock.live_price }} | {{stock.live_change}} | {{ stock.live921 }}  </p>
-            </td>
-            <!-- <td  colspan="2">
-                <p>CMP: {{ stock.live_price }}</p>
-                <p>chg: {{stock.live_change}}</p>
-                <p>50 >: {{stock.sma50_range}}</p>
-            </td> -->
-            <td>
-                <!--  Note -->
-                {% if stock.cp50ma %}
-                    {% if stock.cp50ma > 6 %}
-                        <span>CP > 10%</span>
-                    {% else %}
-                        <span style="color:green;">Valid 50</span>
-                    {% endif %}
-                {% elif stock.percent_50ma > 6 %}
-                    <span style="color:red;">Over Value</span>
-                {% else %}
-                    <span style="color:green;">Valid ,</span>
-                {% endif %}
-            </td>
-            <td><p>{{stock.status}}</p>
-                {% if stock.status == 0 %}
-                    <b>Invalid</b>
-                {% elif stock.status == 1 %}
-                    <b>Over Value</b>
-                {% elif stock.status == 2 %}
-                    <b>Stoploss</b>
-                {% elif stock.status == 3 %}
-                    <b>Completed</b>
-                {% elif stock.status == 4 %}
-                    <b>New</b>
-                {% elif stock.status == 5 %}
-                    <b>Update</b>
-                {% elif stock.status == 6 %}
-                    <b>Entry</b>
-                {% elif stock.status == 7 %}
-                    <b>Confirmation 50MA</b>
-                {% elif stock.status == 8 %}
-                    <b>Order</b>
-                    <div><a href="{% url 'desk_review' %}">Review to buy</a></div>
-                {% elif stock.status == 9 %}
-                    <b>Target 1</b>
-                {% elif stock.status == 10 %}
-                    <b>Target 2</b>
-                {% elif stock.status == 11 %}
-                    <b>Target 3</b>
-                {% elif stock.status == 12 %}
-                    <b>Above T3</b>
-                {% elif stock.status == 13 %}
-                    <b>Altra</b>
-                {% else %}
-                    <b>Out of Range</b>
-                {% endif %}
-            </td>
-            <td>
-                {% if stock.status == 8 %}
-                <a class="btn btn-sm btn-success" href="{% url 'desk_review' %}">Review</a>
-                {% else %}
-                <span class="text-muted">—</span>
-                {% endif %}
-            </td>
-            <td>{{ stock.created_at|date:"d M y" }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="11">No stocks found for given filters.</td>
-        </tr>
-        {% endfor %}
+      {% for stock in stocks %}
+      <tr>
+        <td class="small">{{ stock.created_at|date:"d M y" }}</td>
+        <td>
+          <a href="https://in.tradingview.com/chart/?symbol=NSE%3A{{ stock.stock_code }}" target="_blank"><strong>{{ stock.stock_code }}</strong></a>
+          {% if stock.ticker %}
+          <span class="small text-muted isectick" role="button" title="Copy ticker" onclick="navigator.clipboard.writeText(this.innerText)">{{ stock.ticker }}</span>
+          {% endif %}
+          {% if stock.name %}<div class="small text-muted">{{ stock.name }}</div>{% endif %}
+        </td>
+        <td>{{ stock.stock_cmp|default_if_none:"—" }}</td>
+        <td>
+          {{ stock.live_price|default_if_none:"—" }}
+          {% if stock.live_change != None %}
+          <div class="small {% if stock.live_change >= 0 %}text-success{% else %}text-danger{% endif %}">
+            {{ stock.live_change|floatformat:2 }}
+          </div>
+          {% endif %}
+        </td>
+        <td class="small">
+          {{ stock.live50ma|default_if_none:"—" }}
+          <div>{% if stock.cp50ma != None %}{{ stock.cp50ma|floatformat:2 }}%{% else %}—{% endif %}</div>
+        </td>
+        <td class="small">
+          {{ stock.moving_average_50|default_if_none:"—" }}
+          <span class="text-muted">({{ stock.percent_50ma|default_if_none:"—" }}%)</span>
+          <div class="text-muted">20 {{ stock.moving_average_20|default_if_none:"—" }} · 9 {{ stock.moving_average_09|default_if_none:"—" }}</div>
+        </td>
+        <td class="small">
+          {% if stock.cp50ma != None %}
+            {% if stock.cp50ma > 6 %}
+            <span class="text-danger">Over 6%</span>
+            {% elif stock.cp50ma >= 5 %}
+            <span class="text-success">In 5–6% band</span>
+            {% else %}
+            <span class="text-muted">Below 5%</span>
+            {% endif %}
+          {% elif stock.percent_50ma != None %}
+            {% if stock.percent_50ma > 6 %}
+            <span class="text-danger">Sheet over 6%</span>
+            {% else %}
+            <span class="text-muted">Sheet %</span>
+            {% endif %}
+          {% else %}
+          —
+          {% endif %}
+        </td>
+        <td>
+          {% if stock.status == 8 %}
+          <span class="badge badge-success">8 Order</span>
+          {% elif stock.status == 7 %}
+          <span class="badge badge-info">7 Confirm</span>
+          {% elif stock.status == 6 %}
+          <span class="badge badge-primary">6 Entry</span>
+          {% elif stock.status == 1 %}
+          <span class="badge badge-danger">1 Over value</span>
+          {% elif stock.status >= 9 %}
+          <span class="badge badge-secondary">{{ stock.status }} {{ stock.status_label }}</span>
+          {% else %}
+          <span class="badge badge-secondary">{{ stock.status }} {{ stock.status_label }}</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if stock.status == 8 %}
+          <a class="btn btn-sm btn-success" href="{% url 'desk_review' %}">Review</a>
+          {% else %}
+          <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" class="text-muted">No names for these filters. Reset or wait for ChartInk ingest.</td></tr>
+      {% endfor %}
     </tbody>
-</table>
-<script>
-    function copyTicker(el) {
-    navigator.clipboard.writeText(el.innerText);
-    alert('Copied: ' + el.innerText);
-}
-</script>
+  </table>
+</div>
+{% if page_obj and page_obj.paginator.num_pages > 1 %}
+<nav class="d-flex justify-content-between align-items-center px-3 py-2">
+  <span class="small text-muted">
+    {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}
+    ({{ page_size }} per page)
+  </span>
+  <ul class="pagination pagination-sm mb-0">
+    {% if page_obj.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}"
+         hx-get="{% url 'sma50-dashboard' %}?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}"
+         hx-target="#stock-table" hx-swap="innerHTML" hx-push-url="true">Prev</a>
+    </li>
+    {% endif %}
+    {% for num in page_obj.paginator.page_range %}
+      {% if num == page_obj.number %}
+      <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+      {% elif num == 1 or num == page_obj.paginator.num_pages or num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+      <li class="page-item">
+        <a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ num }}"
+           hx-get="{% url 'sma50-dashboard' %}?{% if querystring %}{{ querystring }}&{% endif %}page={{ num }}"
+           hx-target="#stock-table" hx-swap="innerHTML" hx-push-url="true">{{ num }}</a>
+      </li>
+      {% endif %}
+    {% endfor %}
+    {% if page_obj.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}"
+         hx-get="{% url 'sma50-dashboard' %}?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}"
+         hx-target="#stock-table" hx-swap="innerHTML" hx-push-url="true">Next</a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% elif page_obj %}
+<p class="small text-muted px-3 py-2 mb-0">
+  {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}
+</p>
+{% endif %}

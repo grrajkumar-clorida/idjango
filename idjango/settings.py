@@ -136,6 +136,9 @@ USE_I18N = True
 
 USE_TZ = True  # Always use timezone-aware datetimes for Indian timezone
 
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/

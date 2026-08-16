@@ -237,6 +237,11 @@ def admin_strategies(request):
 @require_http_methods(["GET"])
 def admin_strategies_table(request):
     """HTMX endpoint for strategies table"""
+    return _render_strategies_table(request)
+
+
+def _render_strategies_table(request):
+    """Build strategies table HTML (usable from GET list + POST enable/disable)."""
     status_filter = request.GET.get('status', 'all')
     
     strategies = Strategy.objects.all()
@@ -269,7 +274,8 @@ def admin_strategies_table(request):
         enable_disable_url = f'/stocks/admin/strategies/{strategy.id}/enable/' if not strategy.enabled else f'/stocks/admin/strategies/{strategy.id}/disable/'
         action_text = 'Enable' if not strategy.enabled else 'Disable'
         action_class = 'success' if not strategy.enabled else 'danger'
-        
+        status_q = f'?status={status_filter}' if status_filter else ''
+
         html += f'''
         <tr>
             <td><strong>{strategy.name}</strong></td>
@@ -279,7 +285,7 @@ def admin_strategies_table(request):
             <td>{strategy.created_at.strftime("%Y-%m-%d")}</td>
             <td>
                 <button class="btn btn-sm btn-{action_class} btn-action"
-                        hx-post="{enable_disable_url}"
+                        hx-post="{enable_disable_url}{status_q}"
                         hx-target="#strategies-table"
                         hx-swap="innerHTML"
                         hx-confirm="Are you sure you want to {action_text.lower()} this strategy?">
@@ -298,7 +304,16 @@ def admin_strategies_table(request):
     '''
     
     if not strategies:
-        html = '<div class="text-center py-5 text-muted">No strategies found</div>'
+        html = '''
+        <div class="text-center py-5 text-muted">
+            No strategies found.
+            <div class="mt-3">
+                <a href="/stocks/admin/strategies/register/" class="btn btn-primary btn-sm">
+                    Register New Strategy
+                </a>
+            </div>
+        </div>
+        '''
     
     return HttpResponse(html)
 
@@ -340,9 +355,10 @@ def admin_strategy_enable(request, strategy_id):
     strategy = get_object_or_404(Strategy, id=strategy_id)
     strategy.enabled = True
     strategy.save()
-    
-    # Return updated table
-    return admin_strategies_table(request)
+
+    if request.headers.get("HX-Request"):
+        return _render_strategies_table(request)
+    return redirect("admin_strategy_detail", strategy_id=strategy.id)
 
 
 @require_http_methods(["POST"])
@@ -351,9 +367,110 @@ def admin_strategy_disable(request, strategy_id):
     strategy = get_object_or_404(Strategy, id=strategy_id)
     strategy.enabled = False
     strategy.save()
-    
-    # Return updated table
-    return admin_strategies_table(request)
+
+    if request.headers.get("HX-Request"):
+        return _render_strategies_table(request)
+    return redirect("admin_strategy_detail", strategy_id=strategy.id)
+
+
+def admin_strategy_register(request):
+    """Register or update a strategy from the admin UI."""
+    presets = {
+        "50MA_Strategy": {
+            "code": "ma50",
+            "description": (
+                "50-day Moving Average strategy (Path A) — entry when CMP is "
+                "about 5–6% above 50MA."
+            ),
+            "parameters": {
+                "entry_range_min": 5.0,
+                "entry_range_max": 6.0,
+                "profit_target_min": 8.0,
+                "profit_target_max": 10.0,
+            },
+        },
+    }
+
+    error = None
+    form = {
+        "name": "",
+        "code": "",
+        "description": "",
+        "parameters_json": "{}",
+        "enabled": False,
+        "preset": "",
+    }
+
+    if request.method == "POST":
+        name = (request.POST.get("name") or "").strip()
+        code = (request.POST.get("code") or "").strip()
+        description = (request.POST.get("description") or "").strip()
+        parameters_raw = (request.POST.get("parameters_json") or "{}").strip() or "{}"
+        enabled = request.POST.get("enabled") == "on"
+        preset_key = (request.POST.get("preset") or "").strip()
+
+        if preset_key in presets:
+            preset = presets[preset_key]
+            name = name or preset_key
+            code = code or preset["code"]
+            description = description or preset["description"]
+            if parameters_raw in ("", "{}"):
+                parameters_raw = json.dumps(preset["parameters"], indent=2)
+
+        if not code and name:
+            code = name.lower().replace(" ", "_")[:50]
+
+        form = {
+            "name": name,
+            "code": code,
+            "description": description,
+            "parameters_json": parameters_raw,
+            "enabled": enabled,
+            "preset": preset_key,
+        }
+
+        if not name:
+            error = "Strategy name is required."
+        elif not code:
+            error = "Strategy code is required."
+        else:
+            try:
+                parameters = json.loads(parameters_raw)
+                if not isinstance(parameters, dict):
+                    raise ValueError("Parameters must be a JSON object")
+            except (json.JSONDecodeError, ValueError) as exc:
+                error = f"Invalid parameters JSON: {exc}"
+                parameters = None
+
+            if error is None:
+                existing = Strategy.objects.filter(name=name).first()
+                code_owner = Strategy.objects.filter(code=code).exclude(name=name).first()
+                if code_owner:
+                    error = f"Code '{code}' is already used by '{code_owner.name}'."
+                elif existing:
+                    existing.code = code[:50]
+                    existing.description = description
+                    existing.parameters = parameters or {}
+                    existing.enabled = enabled
+                    existing.save()
+                    return redirect("admin_strategy_detail", strategy_id=existing.id)
+                else:
+                    strategy = Strategy.objects.create(
+                        name=name,
+                        code=code[:50],
+                        description=description,
+                        parameters=parameters or {},
+                        enabled=enabled,
+                    )
+                    return redirect("admin_strategy_detail", strategy_id=strategy.id)
+
+    context = get_admin_context({
+        "presets": presets,
+        "form": form,
+        "error": error,
+        "presets_json": json.dumps(presets),
+    })
+    return render(request, "stocks/admin_strategy_register.html", context)
 
 
 # Positions Management
@@ -585,11 +702,6 @@ def admin_risk_alerts(request):
         html = '<div class="text-center py-3 text-success"><i class="fas fa-check-circle mr-2"></i>All risk parameters within limits</div>'
     
     return HttpResponse(html)
-
-
-def admin_strategy_register(request):
-    """Register new strategy page (placeholder)"""
-    return HttpResponse("Strategy registration form - To be implemented")
 
 
 def admin_sitemap(request):

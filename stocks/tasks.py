@@ -335,6 +335,12 @@ def monitor_positions():
         
         for position in positions:
             try:
+                # Path A desk trades are owned by data.tasks.monitor_50ma_positions
+                if getattr(position, "review_id", None) or getattr(
+                    position, "source", ""
+                ) in ("manual", "tracked"):
+                    continue
+
                 # Get current price
                 current_price = position_tracker.get_current_price(
                     position.stock_code,
@@ -437,6 +443,11 @@ def update_trailing_stops():
         
         for position in positions:
             try:
+                if getattr(position, "review_id", None) or getattr(
+                    position, "source", ""
+                ) in ("manual", "tracked"):
+                    continue
+
                 # Get current price
                 current_price = position_tracker.get_current_price(
                     position.stock_code,

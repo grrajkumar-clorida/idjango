@@ -172,35 +172,17 @@ def filter_stock(sheet_data, stock_code):
             }
     return None  # If stock not found
 
-#@csrf_exempt
 def place_order(request):
-    if request.method == "POST":
-        stock_code = request.POST.get("stock_code")
-        exchange = request.POST.get("exchange", "NSE")
-        quantity = int(request.POST.get("quantity", 1))
-        price = float(request.POST.get("price", 0))
-        order_type = request.POST.get("order_type", "MARKET")
-        product = request.POST.get("product", "cash")
-        action = request.POST.get("action", "BUY")
+    """Legacy 1-qty Breeze buy. Disabled — use the Review desk."""
+    from django.http import JsonResponse
 
-        breeze = BreezeAPI()  # Assuming it loads credentials from .env or init
-        response = breeze.place_order(
-            stock_code=stock_code,
-            exchange=exchange,
-            quantity=quantity,
-            order_type=order_type,
-            price=price,
-            product=product,
-            action=action
-        )
-
-        print('utility:', response)
-        return JsonResponse({
-            "status": "success",
-            "message": f"Order placed: {response}"
-        })
-
-    return JsonResponse({"status": "error", "message": "Invalid request"})
+    return JsonResponse(
+        {
+            "status": "error",
+            "message": "Direct place_order is disabled. Use /stocks/review/.",
+        },
+        status=410,
+    )
 
 # def place_orders(data):
 #     payload = json.dumps({

@@ -27,6 +27,9 @@ def download_chartink_csv():
     finally:
         driver.quit()
 
-# Example usage
-df = download_chartink_csv()
-print(df.head())  # Or save to DB/file
+
+# Disabled: this used to scrape ChartInk on every Django command import.
+# Use: python manage.py get_chartink50ma 50ma
+# df = download_chartink_csv()
+# print(df.head())
+

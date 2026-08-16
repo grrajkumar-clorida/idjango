@@ -152,8 +152,8 @@ class MA50Strategy:
         """
         profit_percent = ((current_price - entry_price) / entry_price) * 100
         
-        # Full exit: Profit is 8-10%
-        if self.profit_target_min <= profit_percent <= self.profit_target_max:
+        # Full exit: profit reached 8% (covers gap-through above 10%)
+        if profit_percent >= self.profit_target_min:
             return {
                 'should_exit': True,
                 'exit_type': 'full',

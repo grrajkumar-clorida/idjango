@@ -1,4 +1,6 @@
 from django.urls import path, include
+from django.contrib.auth.decorators import login_required
+
 from . import views
 from . import admin_views
 from . import trading_views
@@ -10,19 +12,19 @@ urlpatterns = [
     path("itc-price/", views.get_live_price, name="get_live_price"),
     path("web-scr/", views.get_web_data, name="get_web_data"),
 
-    # Phase 2 desk
-    path("review/", trading_views.review_queue, name="desk_review"),
-    path("review/suggest/", trading_views.stock_suggest, name="desk_review_suggest"),
-    path("review/<int:pk>/approve/", trading_views.review_approve, name="desk_review_approve"),
-    path("review/<int:pk>/place/", trading_views.review_place, name="desk_review_place"),
-    path("review/<int:pk>/reject/", trading_views.review_reject, name="desk_review_reject"),
-    path("review/manual/", trading_views.review_manual, name="desk_review_manual"),
-    path("order/", trading_views.order_list, name="desk_orders"),
-    path("orders/", trading_views.order_list, name="desk_orders_alias"),
-    path("positions/", trading_views.position_list, name="desk_positions"),
-    path("positions/", trading_views.position_list, name="stock_positions"),
-    path("positions/refresh-prices/", trading_views.position_refresh_prices, name="desk_position_refresh"),
-    path("positions/<int:pk>/update/", trading_views.position_update, name="desk_position_update"),
+    # Phase 2 desk (login required)
+    path("review/", login_required(trading_views.review_queue), name="desk_review"),
+    path("review/suggest/", login_required(trading_views.stock_suggest), name="desk_review_suggest"),
+    path("review/<int:pk>/approve/", login_required(trading_views.review_approve), name="desk_review_approve"),
+    path("review/<int:pk>/place/", login_required(trading_views.review_place), name="desk_review_place"),
+    path("review/<int:pk>/reject/", login_required(trading_views.review_reject), name="desk_review_reject"),
+    path("review/manual/", login_required(trading_views.review_manual), name="desk_review_manual"),
+    path("order/", login_required(trading_views.order_list), name="desk_orders"),
+    path("orders/", login_required(trading_views.order_list), name="desk_orders_alias"),
+    path("positions/", login_required(trading_views.position_list), name="desk_positions"),
+    path("positions/", login_required(trading_views.position_list), name="stock_positions"),
+    path("positions/refresh-prices/", login_required(trading_views.position_refresh_prices), name="desk_position_refresh"),
+    path("positions/<int:pk>/update/", login_required(trading_views.position_update), name="desk_position_update"),
 
     # Admin Dashboard Routes
     path("admin/", admin_views.admin_dashboard, name="admin_dashboard"),
@@ -33,10 +35,10 @@ urlpatterns = [
     # Strategies Management
     path("admin/strategies/", admin_views.admin_strategies, name="admin_strategies"),
     path("admin/strategies/table/", admin_views.admin_strategies_table, name="admin_strategies_table"),
+    path("admin/strategies/register/", admin_views.admin_strategy_register, name="admin_strategy_register"),
     path("admin/strategies/<int:strategy_id>/", admin_views.admin_strategy_detail, name="admin_strategy_detail"),
     path("admin/strategies/<int:strategy_id>/enable/", admin_views.admin_strategy_enable, name="admin_strategy_enable"),
     path("admin/strategies/<int:strategy_id>/disable/", admin_views.admin_strategy_disable, name="admin_strategy_disable"),
-    path("admin/strategies/register/", admin_views.admin_strategy_register, name="admin_strategy_register"),
     
     # Positions Management
     path("admin/positions/", admin_views.admin_positions, name="admin_positions"),

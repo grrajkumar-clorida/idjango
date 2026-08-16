@@ -171,11 +171,16 @@ def _breeze_ltp(stock_code, exchange="NSE", breeze=None):
 
 def _attach_live(rows, code_attr="stock_code"):
     live_map = StockPriceData.latest_by_stock_code()
+    sma_rows = list(
+        Stocks50MA.objects.exclude(stock_code__isnull=True).exclude(stock_code="")
+        .only("stock_code", "stock_cmp")
+    )
     sma_cmp = {
         (s.stock_code or "").upper(): s.stock_cmp
-        for s in Stocks50MA.objects.filter(stock_cmp__isnull=False)
+        for s in sma_rows
         if s.stock_cmp
     }
+    sma_codes = {(s.stock_code or "").upper() for s in sma_rows}
     for row in rows:
         code = getattr(row, code_attr)
         live = _live_row(live_map, code)
@@ -185,6 +190,19 @@ def _attach_live(rows, code_attr="stock_code"):
         row.live_price = price if price else None
         row.live_50 = live.live50ma if live else None
         row.live_cp50 = live.cp50ma if live else None
+        key = (code or "").strip().upper()
+        if row.live_price:
+            row.live_hint = ""
+        elif key in sma_codes:
+            row.live_hint = (
+                "On the 50MA list but no CMP yet. Wait for the 5-min sheet fetch, "
+                "or type Live CMP / Refresh (Breeze)."
+            )
+        else:
+            row.live_hint = (
+                "Not on the ChartInk 50MA sheet. Type Live CMP from TradingView/broker "
+                "and Save, or Refresh (Breeze LTP)."
+            )
         entry = float(
             getattr(row, "entry_price", None)
             or getattr(row, "price", None)

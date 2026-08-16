@@ -38,8 +38,8 @@ class PositionTracker:
             current_price: Current market price
         """
         try:
-            entry_price = float(position.price)
-            quantity = position.quantity
+            entry_price = float(position.entry_price or position.price or 0)
+            quantity = position.open_qty() if hasattr(position, "open_qty") else position.quantity
             
             if position.action == "BUY":
                 pnl = (current_price - entry_price) * quantity
