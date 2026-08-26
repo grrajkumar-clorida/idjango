@@ -1,10 +1,69 @@
 {% extends "base.html" %}
 
-{% block title %}
-    Home Page
+{% block title %}RBYnex{% endblock %}
+
+{% block hero %}
+{% include "includes/hero_slider.html" %}
 {% endblock %}
 
 {% block content %}
-    <h1>Welcome to the Algo Trading</h1>
-    <p>This is your dashboard content.</p>
+{% if user.is_authenticated %}
+<section class="site-section">
+  <h2>Welcome back, {{ user.username }}</h2>
+  <p class="text-muted">Desk tools are available from the menu.</p>
+  <div class="desk-shortcuts">
+    <a class="btn btn-primary" href="{% url 'sma50-dashboard' %}">50MA</a>
+    <a class="btn btn-outline-primary" href="{% url 'desk_review' %}">Review</a>
+    <a class="btn btn-outline-primary" href="{% url 'desk_orders' %}">Orders</a>
+    <a class="btn btn-outline-primary" href="{% url 'desk_positions' %}">Positions</a>
+  </div>
+</section>
+{% else %}
+<section class="site-section">
+  <h2>Welcome</h2>
+  <p class="lead">CCTV, car ECM, AC service, and freelance web work — Python, Django, PHP, ecommerce, and digital marketing.</p>
+</section>
+{% endif %}
+
+<section id="features" class="site-section">
+  <h2 class="mb-4">Services</h2>
+  <div class="row">
+    <div class="col-md-4 mb-3">
+      <div class="feature-card">
+        <h5>CCTV</h5>
+        <p class="mb-0 text-muted">Camera install and service for homes and shops.</p>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="feature-card">
+        <h5>Car ECM</h5>
+        <p class="mb-0 text-muted">ECM / BCM diagnostics and automobile electronics.</p>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="feature-card">
+        <h5>AC service</h5>
+        <p class="mb-0 text-muted">Split AC install, gas, and cooling service.</p>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="feature-card">
+        <h5>IT freelance</h5>
+        <p class="mb-0 text-muted">Python, Django, and PHP applications.</p>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="feature-card">
+        <h5>Ecommerce</h5>
+        <p class="mb-0 text-muted">Online stores, catalog, and checkout.</p>
+      </div>
+    </div>
+    <div class="col-md-4 mb-3">
+      <div class="feature-card">
+        <h5>Digital marketing</h5>
+        <p class="mb-0 text-muted">SEO, listings, and campaign support.</p>
+      </div>
+    </div>
+  </div>
+</section>
 {% endblock %}

@@ -1,30 +1,25 @@
 {% extends "base.html" %}
 
-{% block title %}Login{% endblock %}
+{% block title %}Sign in · RBYnex{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center mt-4 mb-5">
   <div class="col-md-5">
-    <h3 class="mb-3">Desk login</h3>
-    {% if messages %}
-      {% for message in messages %}
-      <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
-      {% endfor %}
-    {% endif %}
+    <h3 class="mb-3">Sign in</h3>
     <form method="post" action="{% url 'login' %}">
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ next }}">
       <div class="form-group">
-        <label>Username</label>
-        <input class="form-control" name="username" autocomplete="username" required>
+        <label for="id_username">Username</label>
+        <input id="id_username" class="form-control" name="username" autocomplete="username" required>
       </div>
       <div class="form-group">
-        <label>Password</label>
-        <input class="form-control" type="password" name="password" autocomplete="current-password" required>
+        <label for="id_password">Password</label>
+        <input id="id_password" class="form-control" type="password" name="password" autocomplete="current-password" required>
       </div>
       <button class="btn btn-primary" type="submit">Login</button>
     </form>
-    <p class="small text-muted mt-3">Review, Orders, and Positions require a logged-in user.</p>
+    <p class="small text-muted mt-3">Desk tools are available after you sign in. There is no public registration.</p>
   </div>
 </div>
 {% endblock %}

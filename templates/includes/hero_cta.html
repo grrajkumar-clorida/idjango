@@ -1,0 +1,5 @@
+{% if user.is_authenticated %}
+<a class="btn btn-outline-light btn-sm mt-1" href="{% url 'desk_review' %}">Open desk</a>
+{% else %}
+<a class="btn btn-outline-light btn-sm mt-1" href="{% url 'login' %}">Sign in</a>
+{% endif %}

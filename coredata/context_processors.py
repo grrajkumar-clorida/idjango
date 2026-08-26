@@ -1,6 +1,8 @@
 # context_processors.py
 import logging
 
+from django.utils import timezone
+
 from coredata.utils.nifty_cache import get_today_nifty_pe
 
 logger = logging.getLogger(__name__)
@@ -13,4 +15,7 @@ def coredata_context(request):
     except Exception:
         logger.exception("nifty_pe context failed")
         nifty_pe = ["N/A", "PE unavailable"]
-    return {"nifty_pe": nifty_pe}
+    return {
+        "nifty_pe": nifty_pe,
+        "current_year": timezone.now().year,
+    }

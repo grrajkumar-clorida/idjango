@@ -5,7 +5,6 @@ import json
 import logging
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from datetime import datetime, timedelta
 
@@ -114,7 +113,6 @@ def get_strategy_status(request, strategy_id):
         return api_response(success=False, message=str(e), status_code=500)
 
 
-@csrf_exempt
 @require_http_methods(["POST"])
 def enable_strategy(request, strategy_id):
     """Enable a strategy"""
@@ -139,7 +137,6 @@ def enable_strategy(request, strategy_id):
         return api_response(success=False, message=str(e), status_code=500)
 
 
-@csrf_exempt
 @require_http_methods(["POST"])
 def disable_strategy(request, strategy_id):
     """Disable a strategy"""
@@ -164,7 +161,6 @@ def disable_strategy(request, strategy_id):
         return api_response(success=False, message=str(e), status_code=500)
 
 
-@csrf_exempt
 @require_http_methods(["POST"])
 def register_strategy(request):
     """Register a new strategy"""
@@ -310,7 +306,6 @@ def get_position_details(request, position_id):
         return api_response(success=False, message=str(e), status_code=500)
 
 
-@csrf_exempt
 @require_http_methods(["POST"])
 def close_position(request, position_id):
     """Close a position"""
@@ -421,7 +416,6 @@ def get_risk_exposure(request):
         return api_response(success=False, message=str(e), status_code=500)
 
 
-@csrf_exempt
 @require_http_methods(["POST"])
 def set_risk_limits(request):
     """Set risk limits"""
@@ -460,7 +454,6 @@ def set_risk_limits(request):
 
 # Manual Override Endpoints
 
-@csrf_exempt
 @require_http_methods(["POST"])
 def manual_trade(request):
     """Place a manual trade"""
@@ -514,7 +507,6 @@ def manual_trade(request):
         return api_response(success=False, message=str(e), status_code=500)
 
 
-@csrf_exempt
 @require_http_methods(["POST"])
 def emergency_stop(request):
     """Emergency stop - disable all strategies"""
