@@ -24,7 +24,7 @@ def send_telegram_message(message):
 def get_cmp_data_from_google_sheet():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name(
-        "secrets/idjango-888-4e0163c2f1b5.json",  # place this JSON in your base dir or a `secrets/` folder
+        "secrets/gr8-n8n-automation-projects-d2ab9ab07004.json",  # place this JSON in your base dir or a `secrets/` folder
         scope
     )
     client = gspread.authorize(creds)
@@ -46,7 +46,7 @@ def get_cmp_data_from_google_sheet():
 def update_google_sheet(sheet, stock_list, new_data=''):
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     
-    creds = ServiceAccountCredentials.from_json_keyfile_name("secrets/idjango-888-4e0163c2f1b5.json", scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_name("secrets/gr8-n8n-automation-projects-d2ab9ab07004.json", scope)
     client = gspread.authorize(creds)
 
     spreadsheet = client.open("idjango")

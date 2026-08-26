@@ -103,7 +103,8 @@ class BreezeAPI:
     def get_live_price(self, stock_code, exchange):
         """ Fetch the latest market price """
         isec_code = self.get_isec_stock_code(stock_code, exchange, name=1)
-        
+        #print(stock_code,  isec_code[0], isec_code)
+        #exit();
         id_code = isec_code[0]
         response = {}
         try:

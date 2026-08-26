@@ -80,8 +80,12 @@ def update_50ma_statuses():
                 stock_code=stock.stock_code,
                 status="Executed"
             ).first()
-            
-            entry_price = trade.price if trade else stock.stock_cmp
+
+            entry_price = None
+            if trade:
+                entry_price = trade.entry_price or trade.price
+            if not entry_price:
+                entry_price = stock.stock_cmp
             
             new_status = strategy.update_status_based_on_price(
                 stock,

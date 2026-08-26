@@ -1,0 +1,25 @@
+Algorithmic Trading System
+
+Phase 1: 
+Basic requiremts (Idirect brezze api, Google finace, Telegram & cro job logic) added.
+Trading strategies - 50ma, Halfbat etc
+Front end UI.
+get_chartink50ma, fetch_price_data & get_tickers are working. 
+
+
+Phase 2:
+Eg: TATATECH - phase1 given green signal for buy sample 1qty order placed. 
+requments: 
+1) satus 8 list I want to Human reviews once get appovel can palce order based on Human qty and price range.
+2) I want order tracking order_executor and position_monitor flow 
+3) Human can add manuly orders entry in admin.
+4) stocks/order/ - list out all place order
+4) stocks/positions/ - see all list of order postions 
+5) Human can set status - profit booking limit and qty.
+6) page should show p/L and others
+
+Manual order - required 2 modes
+1) manual order - 
+2) just adding for position tracking - eg. TataTech qty 1 bookprice: 745.35 on 29-Jul-2026 10:47 
+
+

@@ -5,13 +5,15 @@ from datetime import datetime
 from django.conf import settings
 from django.contrib import messages
 from django.db.models import Q
-from django.http import JsonResponse
+from django.http import JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from data.models import StockPriceData, Stocks50MA
 from data.engine.order_executor import OrderExecutor
+from infra.utils.infra import STATUS_DICT
 from stocks.models import LiveTrade, Orders, Stock, TradeReview
 
 
@@ -51,9 +53,12 @@ def _parse_entry_at(val):
         "%Y-%m-%dT%H:%M:%S",
         "%d-%b-%Y %H:%M",
         "%d-%b-%Y %H:%M:%S",
+        "%d-%b-%y",
+        "%d-%b-%Y",
         "%Y-%m-%d %H:%M",
         "%Y-%m-%d %H:%M:%S",
         "%d/%m/%Y %H:%M",
+        "%Y-%m-%d",
     ):
         try:
             naive = datetime.strptime(text, fmt)
@@ -369,7 +374,7 @@ def review_manual(request):
                 f"Tracking {stock_code} qty {result['quantity']} @ "
                 f"{result['price']} on {entry_time.strftime('%d-%b-%Y %H:%M')}.",
             )
-            return redirect("desk_positions")
+            return _desk_positions_redirect(request)
         messages.error(request, result.get("message") or "Could not add tracking row.")
         return redirect("desk_review")
 
@@ -442,25 +447,107 @@ def order_list(request):
     })
 
 
+def _desk_positions_redirect(request):
+    sort = (request.POST.get("sort") or request.GET.get("sort") or "").strip()
+    direction = (request.POST.get("dir") or request.GET.get("dir") or "").strip()
+    q = QueryDict(mutable=True)
+    if sort:
+        q["sort"] = sort
+    if direction:
+        q["dir"] = direction
+    url = reverse("desk_positions")
+    qs = q.urlencode()
+    return redirect(f"{url}?{qs}" if qs else url)
+
+
+def _sort_positions(positions, sort, direction):
+    sort = (sort or "stock").strip().lower()
+    if sort == "price":
+        sort = "live"
+    if sort not in ("stock", "entry", "live", "pl"):
+        sort = "stock"
+    reverse = (direction or "asc").strip().lower() == "desc"
+
+    def _f(val, missing):
+        try:
+            if val is None or val == "":
+                return missing
+            return float(val)
+        except (TypeError, ValueError):
+            return missing
+
+    missing = float("-inf") if reverse else float("inf")
+
+    def key(p):
+        if sort == "stock":
+            return (p.stock_code or "").upper()
+        if sort == "entry":
+            return _f(getattr(p, "entry_price", None) or getattr(p, "price", None), missing)
+        if sort == "live":
+            return _f(getattr(p, "live_price", None), missing)
+        return _f(getattr(p, "mark_pl", None), missing)
+
+    positions.sort(key=key, reverse=reverse)
+    return sort, "desc" if reverse else "asc"
+
+
 def position_list(request):
     """Open positions with live P/L. Human can set profit-book price/qty."""
     positions = list(
         LiveTrade.objects.filter(status="Executed").order_by("-timestamp")
     )
     _attach_live(positions)
+    sort = request.GET.get("sort") or "stock"
+    direction = request.GET.get("dir") or "asc"
+    sort, direction = _sort_positions(positions, sort, direction)
+    sort_links = {}
+    for col in ("stock", "entry", "live", "pl"):
+        if sort == col:
+            nxt = "asc" if direction == "desc" else "desc"
+        else:
+            nxt = "desc" if col in ("entry", "live", "pl") else "asc"
+        sort_links[col] = f"?sort={col}&dir={nxt}"
 
     total_pl = sum(float(getattr(p, "mark_pl", 0) or 0) for p in positions)
     invested = 0.0
+    codes = [(p.stock_code or "").strip().upper() for p in positions]
+    ma50_status = {}
+    if codes:
+        for row in Stocks50MA.objects.filter(stock_code__in=codes).only("stock_code", "status"):
+            ma50_status[(row.stock_code or "").upper()] = row.status
     for p in positions:
         entry = float(p.entry_price or p.price or 0)
         invested += entry * p.open_qty()
+        code = (p.stock_code or "").strip().upper()
+        p.ma50_status = ma50_status.get(code)
+        p.ma50_status_label = STATUS_DICT.get(p.ma50_status, "")
     winners = sum(1 for p in positions if float(getattr(p, "mark_pl", 0) or 0) > 0)
     losers = sum(1 for p in positions if float(getattr(p, "mark_pl", 0) or 0) < 0)
 
     missing_live = sum(1 for p in positions if not getattr(p, "live_price", None))
 
+    closed_today = list(
+        LiveTrade.objects.filter(
+            status="Closed",
+            exit_time__date=timezone.now().date(),
+        ).order_by("-exit_time")[:20]
+    )
+    if not closed_today:
+        closed_today = list(
+            LiveTrade.objects.filter(status="Closed").order_by("-exit_time", "-timestamp")[:10]
+        )
+    for t in closed_today:
+        entry = float(t.entry_price or t.price or 0)
+        exit_px = float(t.exit_price or 0)
+        qty = t.quantity or 0
+        t.mark_pl = float(t.profit_loss or 0)
+        cost = entry * qty
+        t.mark_pl_pct = (t.mark_pl / cost * 100) if cost else 0
+        t.live_price = exit_px or None
+
     return render(request, "stocks/desk_positions.html", {
         "positions": positions,
+        "closed_today": closed_today,
         "total": len(positions),
         "total_pl": total_pl,
         "invested": invested,
@@ -469,12 +556,38 @@ def position_list(request):
         "winners": winners,
         "losers": losers,
         "missing_live": missing_live,
+        "sort": sort,
+        "dir": direction,
+        "sort_links": sort_links,
     })
 
 
 @require_POST
 def position_update(request, pk):
     trade = get_object_or_404(LiveTrade, pk=pk, status="Executed")
+
+    close_price = _dec(request.POST.get("close_price"))
+    if close_price is not None and close_price > 0:
+        close_qty = _int(request.POST.get("close_qty"), trade.open_qty()) or trade.open_qty()
+        close_at = _parse_entry_at(
+            request.POST.get("close_at")
+            or request.POST.get("close_at_local")
+        ) or timezone.now()
+        result = OrderExecutor().record_broker_exit(
+            stock_code=trade.stock_code,
+            qty=close_qty,
+            exit_price=close_price,
+            exit_time=close_at,
+            notes=(request.POST.get("notes") or "IDirect fill")[:255],
+            reviewed_by=_reviewer(request),
+            trade=trade,
+        )
+        if result.get("success"):
+            messages.success(request, result.get("message"))
+        else:
+            messages.error(request, result.get("message") or "Could not record sell.")
+        return _desk_positions_redirect(request)
+
     trade.profit_book_price = _dec(request.POST.get("profit_book_price"))
     trade.take_profit = trade.profit_book_price
     trade.profit_book_qty = _int(request.POST.get("profit_book_qty"), trade.profit_book_qty)
@@ -493,18 +606,103 @@ def position_update(request, pk):
         f"{trade.stock_code}: profit book {trade.profit_book_price} "
         f"qty {trade.profit_book_qty or trade.open_qty()}{extra}",
     )
-    return redirect("desk_positions")
+    return _desk_positions_redirect(request)
+
+
+@require_POST
+def position_record_fill(request):
+    """Record an IDirect/Breeze fill on the positions desk (no Breeze call)."""
+    stock_code = (request.POST.get("stock_code") or "").strip().upper()
+    action = (request.POST.get("action") or "BUY").strip().upper()
+    qty = _int(request.POST.get("qty"), 1) or 1
+    fill_price = _dec(request.POST.get("fill_price"))
+    fill_at = _parse_entry_at(
+        request.POST.get("fill_at")
+        or request.POST.get("fill_at_text")
+        or request.POST.get("fill_at_local")
+    ) or timezone.now()
+    live_cmp = _dec(request.POST.get("live_price"))
+    notes = (request.POST.get("notes") or "IDirect manual fill")[:255]
+
+    if not stock_code:
+        messages.error(request, "Stock code is required.")
+        return _desk_positions_redirect(request)
+    if fill_price is None or fill_price <= 0:
+        messages.error(request, "Fill price is required.")
+        return _desk_positions_redirect(request)
+
+    executor = OrderExecutor()
+    if action == "SELL":
+        result = executor.record_broker_exit(
+            stock_code=stock_code,
+            qty=qty,
+            exit_price=fill_price,
+            exit_time=fill_at,
+            entry_price=_dec(request.POST.get("entry_price")),
+            notes=notes,
+            reviewed_by=_reviewer(request),
+        )
+    else:
+        result = executor.record_tracked_fill(
+            stock_code=stock_code,
+            qty=qty,
+            entry_price=fill_price,
+            entry_time=fill_at,
+            take_profit=_dec(request.POST.get("profit_book_price")),
+            take_profit_qty=_int(request.POST.get("profit_book_qty"), qty),
+            stop_loss=_dec(request.POST.get("stop_loss")),
+            notes=notes,
+            reviewed_by=_reviewer(request),
+        )
+        if result.get("success") and live_cmp:
+            _upsert_live_cmp(stock_code, live_cmp)
+
+    if result.get("success"):
+        messages.success(request, result.get("message"))
+    else:
+        messages.error(request, result.get("message") or "Could not record fill.")
+    return _desk_positions_redirect(request)
+
+
+@require_POST
+def position_import_idirect(request):
+    """Upload an IDirect equity order-book CSV and upsert buys / book sells."""
+    upload = request.FILES.get("orderbook")
+    if not upload:
+        messages.error(request, "Choose an IDirect order-book CSV first.")
+        return _desk_positions_redirect(request)
+
+    from stocks.utils.idirect_import import apply_idirect_fills, parse_idirect_orderbook
+
+    try:
+        fills = parse_idirect_orderbook(upload)
+    except Exception as exc:
+        messages.error(request, f"Could not read CSV: {exc}")
+        return _desk_positions_redirect(request)
+    if not fills:
+        messages.warning(request, "No Buy/Sell rows found in that CSV.")
+        return _desk_positions_redirect(request)
+
+    result = apply_idirect_fills(fills, reviewed_by=_reviewer(request))
+    parts = [
+        f"added {result['created']}",
+        f"updated {result['updated']}",
+        f"sells {result['closed']}",
+        f"unchanged {result['skipped']}",
+    ]
+    messages.success(request, "IDirect CSV: " + ", ".join(parts) + ".")
+    for err in result.get("errors") or []:
+        messages.warning(request, err)
+    return _desk_positions_redirect(request)
 
 
 @require_POST
 def position_refresh_prices(request):
-    """Pull Breeze LTP for open positions that have no usable CMP."""
+    """Pull Breeze LTP for every open position and store today's CMP."""
     positions = list(LiveTrade.objects.filter(status="Executed"))
-    _attach_live(positions)
-    missing = [t for t in positions if not getattr(t, "live_price", None)]
-    if not missing:
-        messages.info(request, "All open positions already have a live CMP.")
-        return redirect("desk_positions")
+    if not positions:
+        messages.info(request, "No open positions to price.")
+        return _desk_positions_redirect(request)
 
     from infra.utils.breeze_client import BreezeAPI
 
@@ -515,14 +713,16 @@ def position_refresh_prices(request):
     if not breeze or not getattr(breeze, "api_status", False):
         messages.warning(
             request,
-            "Breeze session is not active. Type Live CMP on the row and Save. "
-            "Missing: " + ", ".join(t.stock_code for t in missing) + ".",
+            "Breeze session is not active. Login via ICICI so ?apisession= is stored, "
+            "then click Refresh again. Open: "
+            + ", ".join(t.stock_code for t in positions)
+            + ".",
         )
-        return redirect("desk_positions")
+        return _desk_positions_redirect(request)
 
     updated = []
     failed = []
-    for trade in missing:
+    for trade in positions:
         ltp = _breeze_ltp(trade.stock_code, trade.exchange or "NSE", breeze=breeze)
         if ltp and _upsert_live_cmp(trade.stock_code, ltp):
             updated.append(f"{trade.stock_code} @ {ltp}")
@@ -530,10 +730,10 @@ def position_refresh_prices(request):
             failed.append(trade.stock_code)
 
     if updated:
-        messages.success(request, "Live CMP updated: " + ", ".join(updated))
+        messages.success(request, "Breeze LTP: " + ", ".join(updated))
     if failed:
         messages.warning(
             request,
-            "No live quote for: " + ", ".join(failed) + ". Type Live CMP and Save.",
+            "No Breeze quote for: " + ", ".join(failed) + ". Type Live CMP and Save.",
         )
-    return redirect("desk_positions")
+    return _desk_positions_redirect(request)

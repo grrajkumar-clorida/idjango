@@ -105,14 +105,29 @@ class Command(BaseCommand):
 
         strategy = MA50Strategy()
         sma_map = StockPriceData.latest_by_stock_code()
+        open_trades = {}
+        for trade in LiveTrade.objects.filter(status="Executed"):
+            key = (trade.stock_code or "").strip().upper()
+            if key and key not in open_trades:
+                open_trades[key] = trade
         stocks_to_update = []
 
         for stock in Stocks50MA.objects.all():
-            live_data = sma_map.get(stock.stock_code)
+            live_data = sma_map.get(stock.stock_code) or sma_map.get(
+                (stock.stock_code or "").upper()
+            )
             if not live_data or live_data.live50ma is None:
                 continue
 
-            new_status = strategy.assign_pre_trade_status(stock, live_data)
+            code = (stock.stock_code or "").strip().upper()
+            trade = open_trades.get(code)
+            if trade:
+                entry = float(trade.entry_price or trade.price or 0) or None
+                new_status = strategy.update_status_based_on_price(
+                    stock, live_data, entry
+                )
+            else:
+                new_status = strategy.assign_pre_trade_status(stock, live_data)
             stock.status = new_status
             stocks_to_update.append(stock)
             self.stdout.write(

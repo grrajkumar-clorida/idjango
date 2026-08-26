@@ -45,7 +45,7 @@ def _live_for(live_map, code):
 
 
 def sma50_dashboard(request):
-    stocks = Stocks50MA.objects.filter(status__gt=3, status__lt=13).order_by(
+    stocks = Stocks50MA.objects.filter(status__gt=3, status__lte=13).order_by(
         "-created_at", "id"
     )
 

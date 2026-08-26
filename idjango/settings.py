@@ -168,6 +168,7 @@ BREEZE_SECRET_KEY = config('BREEZE_SECRET_KEY')
 BREEZE_SESSION = config('BREEZE_SESSION')
 GSHEET_KEY = config('GSHEET_KEY')
 GSHEET_ID = config('GSHEET_ID')
+GSHEET_CREDENTIALS = config('GSHEET_CREDENTIALS', default='')
 
 # Redis as Message Broker
 CELERY_BROKER_URL = 'redis://localhost:6379/0'

@@ -28,6 +28,12 @@ class MA50Strategy:
         self.profit_target_min = 8.0  # Minimum profit % to book
         self.profit_target_max = 10.0  # Maximum profit % to book
         self.partial_exit_percent = 50.0  # % to exit if bought at bottom
+        # Post-trade 50MA status vs entry fill
+        self.target_1_pct = 8.0    # 9 Target 1
+        self.target_2_pct = 10.0   # 10 Target 2
+        self.target_3_pct = 15.0   # 11 Target 3
+        self.above_t3_pct = 20.0   # 12 Above T3
+        self.altra_pct = 25.0      # 13 Altra
 
     def assign_pre_trade_status(self, stock: Stocks50MA, live_data: Optional[StockPriceData]) -> int:
         """
@@ -202,52 +208,42 @@ class MA50Strategy:
             Dict with target_1, target_2, target_3 prices
         """
         return {
-            'target_1': entry_price * 1.08,  # 8% profit
-            'target_2': entry_price * 1.10,  # 10% profit
-            'target_3': entry_price * 1.15,  # 15% profit (long term)
+            'target_1': entry_price * (1 + self.target_1_pct / 100),
+            'target_2': entry_price * (1 + self.target_2_pct / 100),
+            'target_3': entry_price * (1 + self.target_3_pct / 100),
+            'above_t3': entry_price * (1 + self.above_t3_pct / 100),
+            'altra': entry_price * (1 + self.altra_pct / 100),
         }
     
     def update_status_based_on_price(self, stock: Stocks50MA, live_data: StockPriceData, 
                                      entry_price: Optional[float] = None) -> int:
-        """
-        Update stock status based on current price vs targets
-        
-        Status progression:
-        8: Order placed
-        9: Target 1 reached (8% profit)
-        10: Target 2 reached (10% profit)
-        11: Target 3 reached (15% profit)
-        12: Above T3 (hold for long term)
-        
-        Args:
-            stock: Stocks50MA object
-            live_data: StockPriceData object with live prices
-            entry_price: Entry price (if None, uses stock.stock_cmp)
-        
-        Returns:
-            New status value
-        """
+        """Advance status 8-13 from profit vs entry. Never drops a higher target."""
         if not live_data:
             return stock.status
-        
+
         current_price = safe_float(live_data.close_price)
         entry = safe_float(entry_price if entry_price is not None else stock.stock_cmp)
-        
-        if not entry:
+
+        if not entry or current_price <= 0:
             return stock.status
-        
-        # Calculate profit percentage
+
         profit_percent = ((current_price - entry) / entry) * 100
-        
-        # Update status based on profit targets
-        if profit_percent >= 15.0:
-            return 12  # Above T3
-        elif profit_percent >= 10.0:
-            return 11  # Target 3
-        elif profit_percent >= 8.0:
-            return 10  # Target 2
-        elif profit_percent >= 5.0:
-            return 9   # Target 1
-        
-        # If still in position but no target hit, keep current status
-        return stock.status if stock.status >= 8 else stock.status
+
+        if profit_percent >= self.altra_pct:
+            new_status = 13
+        elif profit_percent >= self.above_t3_pct:
+            new_status = 12
+        elif profit_percent >= self.target_3_pct:
+            new_status = 11
+        elif profit_percent >= self.target_2_pct:
+            new_status = 10
+        elif profit_percent >= self.target_1_pct:
+            new_status = 9
+        else:
+            # Fill is on the desk: at least Target 1 (status 8 is Review-only).
+            new_status = 9
+
+        current = int(stock.status or 0)
+        if current >= 8:
+            return max(current, new_status)
+        return new_status

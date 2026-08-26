@@ -437,3 +437,155 @@ class OrderExecutor:
             "price": fill_price,
             "trade_id": trade.id,
         }
+
+    def record_broker_exit(
+        self,
+        *,
+        stock_code: str,
+        qty: int,
+        exit_price: Decimal,
+        exit_time=None,
+        entry_price=None,
+        notes="",
+        reviewed_by="",
+        trade: Optional[LiveTrade] = None,
+    ) -> Dict:
+        """
+        Record an IDirect/Breeze SELL already filled outside the desk.
+        Closes (or reduces) an open BUY and sets realized P/L.
+        If nothing is open, pass entry_price to store a completed round-trip.
+        """
+        stock_code = (stock_code or "").strip().upper()
+        qty = int(qty or 0)
+        if not stock_code or qty < 1 or exit_price is None:
+            return {"success": False, "message": "Stock, qty, and sell price are required"}
+
+        fill_price = float(exit_price)
+        if fill_price <= 0:
+            return {"success": False, "message": "Sell price must be > 0"}
+        if exit_time is None:
+            exit_time = timezone.now()
+
+        if trade is None:
+            trade = (
+                LiveTrade.objects.filter(stock_code=stock_code, status="Executed")
+                .order_by("-timestamp")
+                .first()
+            )
+
+        if trade is None:
+            if entry_price is None or float(entry_price) <= 0:
+                return {
+                    "success": False,
+                    "message": (
+                        f"No open {stock_code} position. "
+                        "Enter the original buy price to record this IDirect sell and P/L."
+                    ),
+                }
+            buy = float(entry_price)
+            pnl = round((fill_price - buy) * qty, 2)
+            order_id = f"IDIR_{stock_code}_{exit_time.strftime('%Y%m%d%H%M')}"[:50]
+            closed = LiveTrade.objects.create(
+                stock_code=stock_code[:10],
+                exchange="NSE",
+                quantity=qty,
+                remaining_quantity=0,
+                order_type="LIMIT",
+                price=Decimal(str(buy)),
+                entry_price=Decimal(str(buy)),
+                exit_price=Decimal(str(fill_price)),
+                entry_time=exit_time,
+                exit_time=exit_time,
+                action="BUY",
+                status="Closed",
+                order_id=order_id,
+                profit_loss=Decimal(str(pnl)),
+                source="tracked",
+                notes=(notes or f"IDirect sell {qty} @ {fill_price}")[:255],
+                exit_reason=(notes or "IDirect manual sell")[:255],
+                entry_reason=f"Round-trip {stock_code} buy {buy} / sell {fill_price}",
+            )
+            Orders.objects.create(
+                ticker=stock_code[:15],
+                script=stock_code[:15],
+                order_id=order_id[:30],
+                position="SELL",
+                stop_loss=0,
+                qty="0",
+                price=fill_price,
+                invested_value=buy * qty,
+                current_value=fill_price * qty,
+                day_pl=pnl,
+                overall_pl=pnl,
+                targets={"entry_price": buy, "exit_price": fill_price, "idirect": True},
+                status=0,
+                message="IDirect manual sell (closed)",
+                user_remark=(reviewed_by or "idirect")[:15],
+            )
+            return {
+                "success": True,
+                "message": f"Closed {stock_code} qty {qty} @ {fill_price}  P/L ₹{pnl}",
+                "order_id": order_id,
+                "quantity": qty,
+                "price": fill_price,
+                "pnl": pnl,
+                "trade_id": closed.id,
+                "closed": True,
+            }
+
+        if trade.action == "SELL":
+            return {"success": False, "message": f"{stock_code} is already a SELL row"}
+
+        open_qty = trade.open_qty()
+        if open_qty <= 0:
+            return {"success": False, "message": f"{stock_code} has no open qty"}
+        exit_qty = min(qty, open_qty)
+        entry = float(trade.entry_price or trade.price or 0)
+        if not entry:
+            return {"success": False, "message": f"{stock_code} has no entry price"}
+
+        pnl = round((fill_price - entry) * exit_qty, 2)
+        remaining = open_qty - exit_qty
+        prior = float(trade.profit_loss or 0)
+        trade.remaining_quantity = remaining
+        trade.exit_price = Decimal(str(fill_price))
+        trade.exit_time = exit_time
+        trade.exit_reason = (notes or "IDirect manual sell")[:255]
+        if remaining <= 0:
+            trade.status = "Closed"
+            trade.profit_loss = Decimal(str(pnl if prior == 0 else round(prior + pnl, 2)))
+        else:
+            trade.profit_loss = Decimal(str(round(prior + pnl, 2)))
+        if notes:
+            extra = (trade.notes or "")
+            trade.notes = f"{extra} | {notes}".strip(" |")[:255]
+        trade.save()
+
+        order_record = Orders.objects.filter(
+            ticker=trade.stock_code
+        ).order_by("-created_at").first()
+        if order_record:
+            order_record.overall_pl = float(trade.profit_loss or 0)
+            order_record.day_pl = pnl
+            order_record.current_value = fill_price * remaining
+            if remaining <= 0:
+                order_record.status = 0
+                order_record.qty = "0"
+                order_record.message = "IDirect manual sell (closed)"[:266]
+            else:
+                order_record.qty = str(remaining)
+            order_record.save()
+
+        return {
+            "success": True,
+            "message": (
+                f"{'Closed' if remaining <= 0 else 'Reduced'} {stock_code} "
+                f"qty {exit_qty} @ {fill_price}  P/L ₹{pnl}"
+            ),
+            "quantity": exit_qty,
+            "price": fill_price,
+            "pnl": pnl,
+            "trade_id": trade.id,
+            "closed": remaining <= 0,
+            "remaining": remaining,
+        }

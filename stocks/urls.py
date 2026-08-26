@@ -24,6 +24,8 @@ urlpatterns = [
     path("positions/", login_required(trading_views.position_list), name="desk_positions"),
     path("positions/", login_required(trading_views.position_list), name="stock_positions"),
     path("positions/refresh-prices/", login_required(trading_views.position_refresh_prices), name="desk_position_refresh"),
+    path("positions/record-fill/", login_required(trading_views.position_record_fill), name="desk_position_record_fill"),
+    path("positions/import-idirect/", login_required(trading_views.position_import_idirect), name="desk_position_import"),
     path("positions/<int:pk>/update/", login_required(trading_views.position_update), name="desk_position_update"),
 
     # Admin Dashboard Routes
